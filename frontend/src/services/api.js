@@ -11,15 +11,19 @@ import { hospitals } from '../data/hospitals.js'
  */
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+// WebSocket endpoint for streaming Live guidance (token-by-token).
+export const WS_LIVE_URL = API_URL.replace(/^http/, 'ws') + '/ws/live'
+export const HAS_BACKEND_WS = true
+
 export const client = axios.create({
   baseURL: API_URL,
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Separate local speech microservice (Whisper + Piper). When VITE_SPEECH_URL is
-// unset, the app falls back to the browser Web Speech API.
-export const SPEECH_URL = import.meta.env.VITE_SPEECH_URL || ''
+// Separate local speech microservice (Whisper + Piper). Defaults to the local
+// service so mic capture works out of the box; set VITE_SPEECH_URL to override.
+export const SPEECH_URL = import.meta.env.VITE_SPEECH_URL || 'http://localhost:8001'
 export const HAS_SPEECH = Boolean(SPEECH_URL)
 
 export const speechClient = axios.create({

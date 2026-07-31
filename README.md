@@ -14,10 +14,11 @@ frontend (React/Vite)
 ```
 
 - **Orchestrator** (`backend/`) — chat/live prompt logic, provider-agnostic LLM
-  client (Ollama native or any OpenAI-compatible API), mock fallback. Light and
-  Railway-deployable.
-- **Speech service** (`../-NEVA-…-Prebuilt-TTS-and-ASR/server.py`) — heavy local
-  ASR/TTS, kept in its own process so models stay warm and deps stay isolated.
+  client (Ollama native or any OpenAI-compatible API), mock fallback, and
+  **optional RAG grounding** (WHO/MoHP protocols via bge-m3 + ChromaDB). The
+  prompt = short system rules + retrieved protocol block + user message.
+- **Speech service** (`speech-service/`) — heavy local ASR/TTS (Whisper + Piper),
+  kept in its own process so models stay warm and deps stay isolated.
 - **Frontend** (`frontend/`) — mobile-first UI. Full voice loop
   (mic → ASR → Gemma → TTS → playback) with automatic fallback to the browser
   Web Speech API when the speech service isn't running.
@@ -33,22 +34,25 @@ cd backend && venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8000
 
-# 2) Speech service  →  http://localhost:8001   (in the prebuilt repo)
-cd ../-NEVA-Nepal-Emergency-Voice-Assistant-Prebuilt-TTS-and-ASR
-venv\Scripts\activate && pip install fastapi
+# 2) Speech service  →  http://localhost:8001
+cd speech-service
+python -m venv venv && .\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 uvicorn server:app --host 0.0.0.0 --port 8001
 
 # 3) Frontend  →  http://localhost:5173
-cd ../NEVA/frontend
+cd ..\frontend
 npm install && npm run dev
 ```
+
+Or launch all of them at once: **`.\run-all.ps1`** (from the repo root).
 
 `backend/.env` and `frontend/.env` are pre-filled for this machine. See each
 sub-project's README for details:
 
 - `backend/README.md` — endpoints, provider switching, deployment
 - `frontend/README.md` — screens, wiring
-- speech service — `SERVER.md` in the prebuilt repo
+- `speech-service/README.md` — ASR/TTS setup and endpoints
 
 ## Degraded modes
 
@@ -56,3 +60,6 @@ sub-project's README for details:
 | --------------------- | ------------------------------------------------------ |
 | Speech service        | Voice falls back to browser Web Speech API             |
 | Orchestrator / Ollama | Chat/Live fall back to built-in mock first-aid replies |
+| RAG disabled/not built| Replies still work, just ungrounded (general guidance) |
+
+RAG setup lives in `backend/README.md` (§ RAG grounding).

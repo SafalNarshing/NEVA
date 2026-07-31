@@ -59,6 +59,18 @@ class Settings(BaseSettings):
     # prebuilt repo's server.py). The frontend calls it directly via
     # VITE_SPEECH_URL. This orchestrator stays LLM-only.
 
+    # --- RAG (WHO / MoHP protocol grounding) -------------------------------
+    # Off by default so the base API runs without the heavy embedding stack.
+    # Enable after: pip install -r requirements-rag.txt && python -m app.rag.build_db
+    rag_enabled: bool = Field(default=False, alias="RAG_ENABLED")
+    rag_top_k: int = Field(default=5, alias="RAG_TOP_K")
+    rag_max_chunks: int = Field(default=4, alias="RAG_MAX_CHUNKS")
+    # When True, a query with no grounded protocol injects a hard "no verified
+    # protocol → call 102" block. When False, RAG is simply skipped for that
+    # turn (keeps casual/follow-up chat flowing). Safety-first deployments may
+    # prefer True.
+    rag_strict: bool = Field(default=False, alias="RAG_STRICT")
+
     # --- CORS --------------------------------------------------------------
     # Comma-separated list of allowed origins, or "*" for all.
     allowed_origins: str = Field(default="*", alias="ALLOWED_ORIGINS")

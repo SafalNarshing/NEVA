@@ -122,6 +122,129 @@ body {
   animation: neva-float 3.5s ease-in-out infinite;
 }
 
+/* ------------------------------------------------------------------ *
+ * Gradient sphere (ChatGPT/Gemini-style living orb) for Live mode
+ * ------------------------------------------------------------------ */
+@keyframes neva-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes neva-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.045);
+  }
+}
+@keyframes neva-orb-bounce {
+  0%,
+  100% {
+    transform: scale(0.98);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.neva-orb-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.neva-orb-glow {
+  position: absolute;
+  inset: -16%;
+  border-radius: 50%;
+  filter: blur(30px);
+  opacity: 0.65;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(139, 100, 242, 0.9),
+    rgba(31, 202, 156, 0.35) 55%,
+    transparent 72%
+  );
+  animation: neva-breathe 4s ease-in-out infinite;
+}
+.neva-orb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #241160;
+  box-shadow:
+    inset 0 -8px 30px rgba(0, 0, 0, 0.45),
+    inset 0 8px 24px rgba(255, 255, 255, 0.18),
+    0 24px 60px -16px rgba(90, 52, 224, 0.7);
+  animation: neva-breathe 4s ease-in-out infinite;
+}
+.neva-orb-blobs {
+  position: absolute;
+  inset: -30%;
+  animation: neva-rotate 15s linear infinite;
+}
+.neva-orb-blobs.rev {
+  animation: neva-rotate 11s linear infinite reverse;
+}
+.neva-blob {
+  position: absolute;
+  width: 72%;
+  height: 72%;
+  border-radius: 50%;
+  filter: blur(14px);
+  mix-blend-mode: screen;
+}
+.neva-blob.a {
+  top: -4%;
+  left: -2%;
+  background: radial-gradient(circle, #a98ff7, transparent 62%);
+}
+.neva-blob.b {
+  bottom: -6%;
+  right: -4%;
+  background: radial-gradient(circle, #22d3ee, transparent 60%);
+}
+.neva-blob.c {
+  top: 26%;
+  right: -6%;
+  background: radial-gradient(circle, #e05cd6, transparent 60%);
+}
+.neva-blob.d {
+  bottom: -2%;
+  left: -6%;
+  background: radial-gradient(circle, #4fdcb5, transparent 60%);
+}
+.neva-orb-gloss {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 34% 26%,
+    rgba(255, 255, 255, 0.5),
+    rgba(255, 255, 255, 0) 42%
+  );
+}
+
+/* State variations */
+.neva-orb[data-state='thinking'] .neva-orb-blobs {
+  animation-duration: 4.5s;
+}
+.neva-orb[data-state='thinking'] {
+  animation-duration: 2.4s;
+}
+.neva-orb[data-state='listening'] {
+  animation: neva-orb-bounce 1.5s ease-in-out infinite;
+}
+.neva-orb[data-state='speaking'] {
+  animation: neva-orb-bounce 0.7s ease-in-out infinite;
+}
+.neva-orb[data-state='speaking'] .neva-orb-blobs {
+  animation-duration: 7s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

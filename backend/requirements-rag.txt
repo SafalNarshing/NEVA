@@ -1,0 +1,8 @@
+# Optional RAG grounding stack (WHO/MoHP protocol retrieval).
+# Heavy: sentence-transformers pulls in torch, and the bge-m3 model is ~2.2 GB.
+# Kept out of the base (Railway) image. Install only when RAG_ENABLED=true:
+#   pip install -r requirements.txt -r requirements-rag.txt
+#   python -m app.rag.build_db --rebuild      # embeds seeds → chroma_db (one-time)
+
+chromadb>=0.5.20
+sentence-transformers>=3.3.0

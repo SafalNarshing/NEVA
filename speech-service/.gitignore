@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Environments
+venv/
+.venv/
+env/
+.env
+
+# Runtime scratch
+output/
+*.wav
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Large model weights are checked in on purpose (see README). If you'd rather
+# keep them out of git, uncomment the next line and use Git LFS or a download step.
+# models/TTS/*.onnx

@@ -10,6 +10,7 @@ from .config import get_settings
 from .llm.client import LLMError, get_llm_client
 from .llm.mock import mock_reply
 from .prompts import system_prompt_for
+from .rag_context import augment_system_prompt
 from .schemas import ChatRequest, ChatResponse
 
 
@@ -39,8 +40,10 @@ async def generate_guidance(req: ChatRequest) -> ChatResponse:
         return ChatResponse(reply=reply, followUp=follow, mode=req.mode)
 
     # --- Real provider -----------------------------------------------------
+    # Prompt = short system rules + retrieved WHO/MoHP protocol block + messages.
     client = get_llm_client()
     system = system_prompt_for(req.mode, req.language)
+    system = augment_system_prompt(system, req)
     text = await client.complete(system, req.messages, image=req.image)
 
     if req.mode == "chat":

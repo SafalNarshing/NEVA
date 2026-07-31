@@ -11,6 +11,7 @@ Switching providers is config-only (LLM_PROVIDER + MODEL_API_URL/KEY/NAME).
 """
 
 import base64
+import json
 from functools import lru_cache
 from typing import Optional
 
@@ -156,6 +157,69 @@ class LLMClient:
             return parse(resp.json())
         except (KeyError, IndexError, ValueError) as exc:
             raise LLMError("Unexpected response format from model provider.") from exc
+
+    # ------------------------------------------------------------------ stream
+
+    async def stream(
+        self,
+        system_prompt: str,
+        messages: list[Message],
+        image: Optional[str] = None,
+    ):
+        """Yield reply text deltas as the model generates them.
+
+        Powers the low-latency Live pipeline: the caller forwards each delta,
+        buffers into sentences, and synthesises audio sentence-by-sentence so the
+        user hears the first words while the model is still writing.
+        """
+        if self._provider == "ollama":
+            body = self._ollama_body(system_prompt, messages, image)
+            body["stream"] = True
+        else:
+            body = self._openai_body(system_prompt, messages, image)
+            body["stream"] = True
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=self._settings.request_timeout
+            ) as http:
+                async with http.stream(
+                    "POST", self._endpoint, headers=self._headers, json=body
+                ) as resp:
+                    if resp.status_code >= 400:
+                        detail = (await resp.aread())[:400]
+                        raise LLMError(f"Model provider error {resp.status_code}: {detail}")
+                    async for line in resp.aiter_lines():
+                        delta = self._parse_stream_line(line)
+                        if delta:
+                            yield delta
+        except httpx.TimeoutException as exc:
+            raise LLMError("The model took too long to respond.") from exc
+        except httpx.HTTPError as exc:
+            raise LLMError(f"Could not reach the model provider: {exc}") from exc
+
+    def _parse_stream_line(self, line: str) -> Optional[str]:
+        line = line.strip()
+        if not line:
+            return None
+        if self._provider == "ollama":
+            # Native /api/chat streams one JSON object per line.
+            try:
+                obj = json.loads(line)
+            except ValueError:
+                return None
+            return (obj.get("message") or {}).get("content") or None
+        # OpenAI-compatible SSE: "data: {json}" lines, terminated by "[DONE]".
+        if line.startswith("data:"):
+            payload = line[5:].strip()
+            if payload == "[DONE]":
+                return None
+            try:
+                obj = json.loads(payload)
+                return (obj["choices"][0].get("delta") or {}).get("content") or None
+            except (ValueError, KeyError, IndexError):
+                return None
+        return None
 
 
 @lru_cache

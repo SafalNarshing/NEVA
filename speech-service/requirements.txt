@@ -1,0 +1,11 @@
+# NEVA Speech Service — ASR (faster-whisper) + TTS (Piper) over FastAPI.
+# Heavy / platform-specific ML deps; kept separate from the chat orchestrator.
+# Versions match the proven Python 3.13 setup (have prebuilt wheels).
+
+fastapi==0.141.1
+uvicorn[standard]==0.52.0
+python-multipart==0.0.32
+faster-whisper==1.2.1
+piper-tts==1.6.0
+numpy==2.5.1
+pydub==0.25.1

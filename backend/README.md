@@ -33,10 +33,45 @@ Open http://localhost:8000/docs for interactive API docs.
 All routes are also mounted under `/api` (`/api/chat`, `/api/live`, …) to match
 the frontend.
 
-> **Voice (ASR/TTS)** is a **separate local service** — see the prebuilt repo's
-> `server.py` (runs on `:8001`). This orchestrator is LLM-only so it stays light
-> and Railway-deployable. The frontend calls the speech service directly via
+**Streaming (Live mode):** `WS /ws/live` streams the grounded Gemma reply token
+by token — send one JSON frame `{messages, language}`, receive
+`{type:"token"|"done"|"error"}`. The frontend buffers tokens into sentences and
+synthesises audio sentence-by-sentence, so words are spoken while the model is
+still writing. On startup the API warms bge-m3 + the LLM so the first turn isn't
+the slow one. First-token latency is dominated by the model — for sub-second
+turns use a smaller `MODEL_NAME` (e.g. a 2–3B Ollama model); the streaming
+pipeline is model-agnostic.
+
+> **Voice (ASR/TTS)** is a **separate local service** — see `../speech-service/`
+> (runs on `:8001`). This orchestrator is LLM-only so it stays light and
+> Railway-deployable. The frontend calls the speech service directly via
 > `VITE_SPEECH_URL`. See "Voice architecture" below.
+
+## RAG grounding (WHO / MoHP protocols)
+
+When enabled, every real-model reply is grounded in **42 hand-verified protocol
+chunks** (English + Nepali) drawn from **WHO Basic Emergency Care (2016)** and
+the **Nepal MoHP Standard Treatment Protocol (2078 BS)**, covering 11 emergencies
+(choking, bleeding, CPR, snakebite, chest pain, burns, stroke, altitude sickness,
+drowning, shock, seizure). Retrieval uses `BAAI/bge-m3` embeddings in ChromaDB.
+
+The assembled prompt is: **short system rules + retrieved protocol block + user
+message** (`app/rag_context.py` → `app/rag/retriever.py`).
+
+Enable it:
+
+```bash
+pip install -r requirements-rag.txt        # chromadb + sentence-transformers (+torch)
+python -m app.rag.build_db --rebuild        # embeds seeds → app/rag/chroma_db (one-time, downloads bge-m3)
+# then set RAG_ENABLED=true in .env
+```
+
+- `RAG_ENABLED` off by default (base API needs no embedding stack).
+- `RAG_STRICT=true` refuses ("no verified protocol → call 102") when nothing
+  matches; `false` (default) just skips grounding for that turn.
+- Retrieval is bilingual and auto-detects Nepali vs English from the query.
+- Rebuild data lives in `app/rag/` (`seed_protocols.py`, `seed_protocols_ne.py`);
+  drop extra JSON chunks in `app/rag/data/chunks/` and re-run `build_db`.
 
 ### Request / response
 
@@ -88,7 +123,7 @@ URL in the `image` field (handled for both providers).
 
 Speech is intentionally **not** in this service. Whisper + Piper are heavy,
 CPU-bound, and hold warm model state, so they live in a dedicated local
-FastAPI microservice inside the prebuilt repo:
+FastAPI microservice at `../speech-service/`:
 
 ```
 frontend
@@ -96,11 +131,11 @@ frontend
   └─ VITE_SPEECH_URL → speech service   (:8001)   → Whisper + Piper     [/asr /tts]
 ```
 
-Run the speech service (from the prebuilt repo):
+Run the speech service:
 
 ```bash
-cd <prebuilt-repo>
-venv\Scripts\activate
+cd ../speech-service
+.\venv\Scripts\Activate.ps1
 uvicorn server:app --host 0.0.0.0 --port 8001
 ```
 
@@ -120,15 +155,21 @@ backend/
     schemas.py         # request/response models (matches frontend)
     prompts.py         # calm bilingual system prompts (chat + live)
     services.py        # request -> (reply, followUp); mock/real decision
+    rag_context.py     # bridges chat flow → protocol retrieval (lazy, optional)
     llm/
       client.py        # openai-compat + ollama-native client (httpx)
       mock.py          # offline fallback guidance engine
+    rag/               # optional RAG stack (WHO/MoHP protocols)
+      models.py        # pydantic contract (chunk metadata, request/result)
+      seed_protocols.py / seed_protocols_ne.py   # 42 verified chunks (EN + NE)
+      retriever.py     # bge-m3 + ChromaDB → retrieve() + format_for_prompt()
+      build_db.py      # embeds seeds → chroma_db  (python -m app.rag.build_db)
     routers/
       health.py  chat.py  live.py
-  requirements.txt   .env.example   Procfile   railway.json
+  requirements.txt   requirements-rag.txt   .env.example   Procfile   railway.json
 ```
 
-Speech service (separate, in the prebuilt repo): `server.py` + `pipeline.py`.
+Speech service (separate): `../speech-service/` (`server.py` + `pipeline.py`).
 
 ## Deploy on Railway
 

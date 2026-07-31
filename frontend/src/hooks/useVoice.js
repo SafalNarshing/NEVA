@@ -15,6 +15,7 @@ import { useSpeechRecognition, useTextToSpeech } from './useSpeech'
 export function useVoiceInput({ onTranscript, onInterim } = {}) {
   const recorder = useAudioRecorder()
   const [transcribing, setTranscribing] = useState(false)
+  const [error, setError] = useState(null)
 
   const browser = useSpeechRecognition({
     onResult: ({ interim, final }) => {
@@ -33,15 +34,20 @@ export function useVoiceInput({ onTranscript, onInterim } = {}) {
           if (text?.trim()) onTranscript?.(text.trim())
         }
       } catch (err) {
+        setError(
+          'Couldn’t reach the speech service. Is it running on :8001?',
+        )
         console.warn('[NEVA] ASR failed:', err.message)
       } finally {
         setTranscribing(false)
       }
     } else {
+      setError(null)
       try {
         await recorder.start()
       } catch (err) {
-        console.warn('[NEVA] mic error:', err.message)
+        // Surface the real reason (secure context / permission / no mic).
+        setError(err.message)
       }
     }
   }, [recorder, onTranscript])
@@ -51,7 +57,10 @@ export function useVoiceInput({ onTranscript, onInterim } = {}) {
       active: recorder.recording,
       busy: transcribing,
       toggle: serverToggle,
-      supported: recorder.supported,
+      // Optimistic: keep the mic tappable so the precise reason surfaces on tap
+      // rather than a dead, disabled button.
+      supported: true,
+      error,
       mode: 'server',
     }
   }
@@ -59,8 +68,16 @@ export function useVoiceInput({ onTranscript, onInterim } = {}) {
   return {
     active: browser.listening,
     busy: false,
-    toggle: () => (browser.listening ? browser.stop() : browser.start()),
+    toggle: () => {
+      setError(null)
+      if (!browser.supported) {
+        setError('Voice input isn’t supported in this browser. Use Chrome or Edge.')
+        return
+      }
+      browser.listening ? browser.stop() : browser.start()
+    },
     supported: browser.supported,
+    error,
     mode: 'browser',
   }
 }

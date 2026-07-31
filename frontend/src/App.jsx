@@ -1,6 +1,7 @@
 import { Routes, Route, Outlet } from 'react-router-dom'
 import PhoneFrame from './components/PhoneFrame'
 import BottomNav from './components/BottomNav'
+import { ConversationProvider } from './context/ConversationContext'
 import Home from './pages/Home'
 import Instructions from './pages/Instructions'
 import InstructionDetail from './pages/InstructionDetail'
@@ -23,7 +24,8 @@ function TabbedLayout() {
 export default function App() {
   return (
     <PhoneFrame>
-      <Routes>
+      <ConversationProvider>
+        <Routes>
         {/* Immersive full-screen route (no bottom nav) */}
         <Route path="/live" element={<LiveMode />} />
 
@@ -35,7 +37,8 @@ export default function App() {
           <Route path="/chat" element={<Chat />} />
           <Route path="/map" element={<MapPage />} />
         </Route>
-      </Routes>
+        </Routes>
+      </ConversationProvider>
     </PhoneFrame>
   )
 }
