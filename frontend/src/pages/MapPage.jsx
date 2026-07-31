@@ -19,6 +19,16 @@ const typeTint = {
 }
 const typeIcon = { Hospital: 'Cross', Clinic: 'Stethoscope', Pharmacy: 'Pill' }
 
+/**
+ * Open Google Maps straight into driving navigation to a place, starting from
+ * the user's current location. On mobile this launches the Maps app directly;
+ * `dir_action=navigate` asks it to begin turn-by-turn driving guidance.
+ */
+function driveTo(lat, lng) {
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving&dir_action=navigate`
+  window.open(url, '_blank', 'noopener,noreferrer')
+}
+
 export default function MapPage() {
   const { coords, status, error, locate } = useGeolocation()
   const [filter, setFilter] = useState('All')
@@ -179,14 +189,13 @@ export default function MapPage() {
               >
                 <Phone size={17} aria-hidden="true" /> Call
               </a>
-              <a
-                href={`https://www.openstreetmap.org/?mlat=${h.lat}&mlon=${h.lng}#map=16/${h.lat}/${h.lng}`}
-                target="_blank"
-                rel="noreferrer"
+              <button
+                type="button"
+                onClick={() => driveTo(h.lat, h.lng)}
                 className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-50 font-bold text-brand-600 transition-transform active:scale-95"
               >
-                <Navigation size={17} aria-hidden="true" /> Directions
-              </a>
+                <Navigation size={17} aria-hidden="true" /> Drive
+              </button>
             </div>
           </li>
         ))}

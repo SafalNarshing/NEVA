@@ -1,0 +1,100 @@
+"""
+Application configuration.
+
+All sensitive / environment-specific values are loaded from environment
+variables (or a local .env file) via pydantic-settings. This keeps secrets out
+of the code and makes switching model providers (Llama -> Hugging Face -> Groq)
+a config-only change.
+"""
+
+from functools import lru_cache
+
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # --- App ---------------------------------------------------------------
+    app_name: str = "NEVA API"
+    environment: str = Field(default="development")
+
+    # --- Model provider (OpenAI-compatible) --------------------------------
+    # Base URL of the provider, WITHOUT the trailing /chat/completions.
+    #   Groq:        https://api.groq.com/openai/v1
+    #   HF Router:   https://router.huggingface.co/v1
+    #   Ollama:      http://localhost:11434/v1
+    #   Together:    https://api.together.xyz/v1
+    model_api_url: str = Field(default="", alias="MODEL_API_URL")
+    model_api_key: str = Field(default="", alias="MODEL_API_KEY")
+    model_name: str = Field(default="llama-3.1-8b-instant", alias="MODEL_NAME")
+
+    # "openai" for any OpenAI-compatible provider (Groq, HF, Together, OpenAI),
+    # or "ollama" to use Ollama's native /api/chat (needed to reliably suppress
+    # reasoning on models like gemma4:12b). With "ollama", MODEL_API_URL may be
+    # the /v1 base or the root — both are handled.
+    llm_provider: str = Field(default="openai", alias="LLM_PROVIDER")
+
+    # Generation defaults
+    request_timeout: float = Field(default=45.0, alias="REQUEST_TIMEOUT")
+    temperature: float = Field(default=0.4, alias="TEMPERATURE")
+    max_tokens: int = Field(default=512, alias="MAX_TOKENS")
+
+    # If the provider is a true vision model (e.g. Gemma 3), enable image parts.
+    vision_enabled: bool = Field(default=False, alias="VISION_ENABLED")
+
+    # Reasoning models (e.g. gemma4:12b on Ollama) spend tokens on hidden
+    # "thinking" before answering, which can swallow the whole budget and leave
+    # an empty reply. When true we send {"think": false} to suppress it. Only
+    # enable for providers that accept this field (Ollama) — OpenAI/Groq reject
+    # unknown body params, so keep it off for those.
+    disable_thinking: bool = Field(default=False, alias="DISABLE_THINKING")
+
+    # --- Speech (local ASR + TTS via the prebuilt pipeline) ----------------
+    # Off by default so the base image stays light and Railway-deployable.
+    # Turn on locally (with requirements-speech.txt installed) for real voice.
+    speech_enabled: bool = Field(default=False, alias="SPEECH_ENABLED")
+
+    # ASR — faster-whisper (CTranslate2). Nepali-tuned model by default.
+    asr_model_name: str = Field(
+        default="Dragneel/whisper-medium-nepali-openslr-ct2", alias="ASR_MODEL_NAME"
+    )
+    asr_device: str = Field(default="cpu", alias="ASR_DEVICE")  # "cpu" | "cuda"
+    asr_compute_type: str = Field(default="int8", alias="ASR_COMPUTE_TYPE")
+
+    # TTS — Piper ONNX voices. Folder must contain the four model/config files:
+    #   ne_NP-google-medium.onnx(.json), en_US-lessac-medium.onnx(.json)
+    tts_model_dir: str = Field(default="models/TTS", alias="TTS_MODEL_DIR")
+    tts_ne_model: str = Field(default="ne_NP-google-medium.onnx", alias="TTS_NE_MODEL")
+    tts_en_model: str = Field(default="en_US-lessac-medium.onnx", alias="TTS_EN_MODEL")
+
+    # --- CORS --------------------------------------------------------------
+    # Comma-separated list of allowed origins, or "*" for all.
+    allowed_origins: str = Field(default="*", alias="ALLOWED_ORIGINS")
+
+    # --- Fallback ----------------------------------------------------------
+    # When true, or when no API key is configured, endpoints return canned
+    # first-aid guidance so the full pipeline works with zero external setup.
+    use_mock: bool = Field(default=False, alias="USE_MOCK")
+
+    @property
+    def cors_origins(self) -> list[str]:
+        if self.allowed_origins.strip() == "*":
+            return ["*"]
+        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
+
+    @property
+    def mock_mode(self) -> bool:
+        """Mock when explicitly requested or when no credentials are present."""
+        return self.use_mock or not (self.model_api_url and self.model_api_key)
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Cached settings singleton."""
+    return Settings()

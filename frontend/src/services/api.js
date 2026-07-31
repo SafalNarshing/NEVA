@@ -24,25 +24,42 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms))
  * Chat / Live guidance (Gemma)
  * ------------------------------------------------------------------ */
 
+// Set VITE_API_URL to point at the NEVA backend. When unset, or when a request
+// fails, we fall back to the local mock so the demo always works.
+const HAS_BACKEND = Boolean(import.meta.env.VITE_API_URL)
+
 /**
  * Send a message to the assistant.
  * @param {{ messages: Array<{role:string, content:string}>, image?: string, mode?: 'chat'|'live' }} payload
  * @returns {Promise<{ reply: string, followUp?: string }>}
  */
 export async function sendMessage(payload) {
-  // REAL: return (await client.post('/api/chat', payload)).data
+  if (HAS_BACKEND) {
+    try {
+      return (await client.post('/api/chat', payload)).data
+    } catch (err) {
+      console.warn('[NEVA] /chat failed, using offline guidance:', err.message)
+    }
+  }
   await wait(700)
   return mockAssistantReply(payload)
 }
 
 /**
- * Stream-style helper used by Live Mode to fetch the next single step.
+ * Fetch the next single step for Live Mode.
  * Kept separate so Live can drive a calm, one-step-at-a-time flow.
  */
 export async function nextLiveStep(payload) {
-  // REAL: return (await client.post('/api/live/step', payload)).data
+  const body = { ...payload, mode: 'live' }
+  if (HAS_BACKEND) {
+    try {
+      return (await client.post('/api/live', body)).data
+    } catch (err) {
+      console.warn('[NEVA] /live failed, using offline guidance:', err.message)
+    }
+  }
   await wait(600)
-  return mockAssistantReply({ ...payload, mode: 'live' })
+  return mockAssistantReply(body)
 }
 
 /* ------------------------------------------------------------------ *
@@ -50,19 +67,32 @@ export async function nextLiveStep(payload) {
  * API via hooks/useSpeech, but these endpoints are here for a server swap.
  * ------------------------------------------------------------------ */
 
+/**
+ * Server-side transcription (faster-whisper, Nepali + English).
+ * Returns { text }. Requires the backend running with SPEECH_ENABLED=true;
+ * otherwise callers should fall back to the browser SpeechRecognition hook.
+ */
 export async function transcribeAudio(audioBlob) {
-  // REAL:
-  // const form = new FormData(); form.append('audio', audioBlob)
-  // return (await client.post('/api/asr', form)).data
-  void audioBlob
-  await wait(500)
-  return { text: '' }
+  const form = new FormData()
+  form.append('audio', audioBlob, 'recording.wav')
+  const { data } = await client.post('/api/asr', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data // { text }
 }
 
+/**
+ * Server-side speech synthesis (Piper). Returns a playable object URL for the
+ * WAV audio, or throws if speech is disabled — callers fall back to browser TTS.
+ */
 export async function synthesizeSpeech(text) {
-  // REAL: return (await client.post('/api/tts', { text }, { responseType: 'blob' })).data
-  await wait(200)
-  return { audioUrl: null, text }
+  const resp = await client.post(
+    '/api/tts',
+    { text },
+    { responseType: 'blob' },
+  )
+  const audioUrl = URL.createObjectURL(resp.data)
+  return { audioUrl, text }
 }
 
 /* ------------------------------------------------------------------ *
