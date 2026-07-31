@@ -1,9 +1,16 @@
-<!-- <p align="center"><img src="docs/logo.png" alt="NEVA logo" width="160"></p> -->
+<table>
+<tr>
+<td><img src="https://raw.githubusercontent.com/SafalNarshing/NEVA/bbb17f9b84bf7504e81667a5bef0eda6f053bfed/NEVA.png" alt="NEVA logo" width="120" style="border-radius:16px"></td>
+<td>
 
 # NEVA — Nepal Emergency Voice Assistant
 
 Calm, step-by-step first-aid guidance in **English and Nepali** — by voice, chat,
 or offline guides. Built for low-stress use in a real emergency.
+
+</td>
+</tr>
+</table>
 
 **Live demo:** https://neva-pied.vercel.app/
 **Demo video (short):** https://www.youtube.com/shorts/EWnz5vF-teM
