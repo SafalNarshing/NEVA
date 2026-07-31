@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ *
+ * NEVA design tokens — violet + teal playful medical aesthetic
+ * ------------------------------------------------------------------ */
+@theme {
+  --font-sans: 'Figtree', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Brand — violet */
+  --color-brand-50: #f1eefe;
+  --color-brand-100: #e4defd;
+  --color-brand-200: #c9bcfb;
+  --color-brand-300: #a98ff7;
+  --color-brand-400: #8b64f2;
+  --color-brand-500: #6c4cf1;
+  --color-brand-600: #5a34e0;
+  --color-brand-700: #4a29bd;
+  --color-brand-800: #3a2199;
+  --color-brand-900: #2b1a70;
+
+  /* Accent — teal / emerald */
+  --color-teal-50: #e6fbf4;
+  --color-teal-100: #c6f5e6;
+  --color-teal-200: #8eead0;
+  --color-teal-300: #4fdcb5;
+  --color-teal-400: #1fca9c;
+  --color-teal-500: #10b98a;
+  --color-teal-600: #059669;
+  --color-teal-700: #047857;
+
+  /* Emergency — red */
+  --color-danger-50: #fef2f2;
+  --color-danger-100: #fee2e2;
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+
+  /* Neutrals */
+  --color-ink: #171326;
+  --color-ink-soft: #6b6478;
+  --color-line: #eceaf3;
+  --color-canvas: #f5f4fb;
+
+  --radius-card: 1.75rem;
+
+  --shadow-card: 0 10px 30px -12px rgba(60, 40, 120, 0.18);
+  --shadow-float: 0 18px 40px -14px rgba(60, 40, 120, 0.35);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: #e9e7f4;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Hide scrollbars inside the phone frame while keeping scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes neva-pulse-ring {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+@keyframes neva-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes neva-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes neva-bar {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.animate-fade-up {
+  animation: neva-fade-up 0.4s ease-out both;
+}
+.animate-float {
+  animation: neva-float 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
