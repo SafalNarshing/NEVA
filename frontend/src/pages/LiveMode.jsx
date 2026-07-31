@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mic, MicOff, Camera, PhoneOff, Volume2, VolumeX } from 'lucide-react'
 import { nextLiveStep } from '../services/api'
-import { useTextToSpeech, useSpeechRecognition } from '../hooks/useSpeech'
+import { useVoiceInput, useVoiceOutput } from '../hooks/useVoice'
 
 const OPENER = {
   reply:
@@ -61,48 +61,59 @@ function Orb({ state }) {
 export default function LiveMode() {
   const navigate = useNavigate()
   const [turn, setTurn] = useState(OPENER)
-  const [transcript, setTranscript] = useState('')
+  const [interim, setInterim] = useState('')
   const [thinking, setThinking] = useState(false)
   const [muted, setMuted] = useState(false)
-  const [history, setHistory] = useState([])
+
   const fileRef = useRef(null)
   const mutedRef = useRef(false)
+  const historyRef = useRef([])
 
-  const { speak, stop: stopSpeak, speaking } = useTextToSpeech()
+  const voiceOut = useVoiceOutput()
 
-  const say = (text) => {
-    if (!mutedRef.current) speak(text)
-  }
-
-  const handleFinal = async (text) => {
-    if (!text.trim()) return
-    setTranscript('')
-    const nextHistory = [...history, { role: 'user', content: text }]
-    setHistory(nextHistory)
-    setThinking(true)
-    try {
-      const res = await nextLiveStep({ messages: nextHistory, mode: 'live' })
-      setTurn(res)
-      setHistory((h) => [...h, { role: 'assistant', content: res.reply }])
-      say([res.reply, res.followUp].filter(Boolean).join('. '))
-    } finally {
-      setThinking(false)
-    }
-  }
-
-  const { start, stop, listening, supported } = useSpeechRecognition({
-    onResult: ({ interim, final }) => {
-      setTranscript(final || interim)
-      if (final) handleFinal(final)
+  const say = useCallback(
+    (text) => {
+      if (!mutedRef.current) voiceOut.speak(text)
     },
+    [voiceOut],
+  )
+
+  const handleFinal = useCallback(
+    async (text) => {
+      if (!text?.trim()) return
+      setInterim('')
+      const nextHistory = [...historyRef.current, { role: 'user', content: text }]
+      historyRef.current = nextHistory
+      setThinking(true)
+      try {
+        const res = await nextLiveStep({ messages: nextHistory, mode: 'live' })
+        historyRef.current = [
+          ...nextHistory,
+          { role: 'assistant', content: res.reply },
+        ]
+        setTurn(res)
+        say([res.reply, res.followUp].filter(Boolean).join('. '))
+      } finally {
+        setThinking(false)
+      }
+    },
+    [say],
+  )
+
+  const voiceIn = useVoiceInput({
+    onTranscript: handleFinal,
+    onInterim: setInterim,
   })
 
   // Greet on entry.
   useEffect(() => {
-    const t = setTimeout(() => say([OPENER.reply, OPENER.followUp].join('. ')), 500)
+    const t = setTimeout(
+      () => say([OPENER.reply, OPENER.followUp].join('. ')),
+      500,
+    )
     return () => {
       clearTimeout(t)
-      stopSpeak()
+      voiceOut.stop()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -111,16 +122,29 @@ export default function LiveMode() {
     const next = !muted
     setMuted(next)
     mutedRef.current = next
-    if (next) stopSpeak()
+    if (next) voiceOut.stop()
   }
 
   const endSession = () => {
-    stop()
-    stopSpeak()
+    voiceOut.stop()
     navigate('/')
   }
 
-  const orbState = listening ? 'listening' : speaking ? 'speaking' : 'idle'
+  const orbState = voiceIn.active
+    ? 'listening'
+    : voiceOut.speaking
+      ? 'speaking'
+      : 'idle'
+
+  const status = voiceIn.busy
+    ? 'Transcribing…'
+    : thinking
+      ? 'NEVA is thinking…'
+      : voiceIn.active
+        ? 'Listening…'
+        : voiceOut.speaking
+          ? 'Speaking…'
+          : 'Tap the mic to talk'
 
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-brand-700 via-brand-600 to-brand-800 text-white">
@@ -147,15 +171,7 @@ export default function LiveMode() {
       {/* Orb */}
       <div className="flex flex-col items-center pt-8">
         <Orb state={orbState} />
-        <p className="mt-5 h-5 text-sm font-medium text-brand-100">
-          {thinking
-            ? 'NEVA is thinking…'
-            : listening
-              ? 'Listening…'
-              : speaking
-                ? 'Speaking…'
-                : 'Tap the mic to talk'}
-        </p>
+        <p className="mt-5 h-5 text-sm font-medium text-brand-100">{status}</p>
       </div>
 
       {/* Guidance */}
@@ -169,8 +185,8 @@ export default function LiveMode() {
               {turn.followUp}
             </p>
           )}
-          {transcript && (
-            <p className="mt-4 text-sm italic text-white/70">“{transcript}”</p>
+          {interim && (
+            <p className="mt-4 text-sm italic text-white/70">“{interim}”</p>
           )}
         </div>
       </div>
@@ -201,14 +217,14 @@ export default function LiveMode() {
 
         <button
           type="button"
-          onClick={listening ? stop : start}
-          disabled={!supported}
-          aria-label={listening ? 'Stop listening' : 'Start talking'}
+          onClick={voiceIn.toggle}
+          disabled={!voiceIn.supported || voiceIn.busy}
+          aria-label={voiceIn.active ? 'Stop listening' : 'Start talking'}
           className={`grid h-20 w-20 place-items-center rounded-full shadow-float transition-transform active:scale-95 disabled:opacity-50 ${
-            listening ? 'bg-danger-500' : 'bg-white text-brand-600'
+            voiceIn.active ? 'bg-danger-500' : 'bg-white text-brand-600'
           }`}
         >
-          {listening ? (
+          {voiceIn.active ? (
             <MicOff size={30} className="text-white" aria-hidden="true" />
           ) : (
             <Mic size={30} strokeWidth={2.4} aria-hidden="true" />
@@ -225,9 +241,9 @@ export default function LiveMode() {
         </button>
       </div>
 
-      {!supported && (
+      {!voiceIn.supported && (
         <p className="pb-4 text-center text-xs text-brand-100">
-          Voice input isn’t supported in this browser — try Chat Mode instead.
+          Voice input isn’t available here — try Chat Mode instead.
         </p>
       )}
     </div>

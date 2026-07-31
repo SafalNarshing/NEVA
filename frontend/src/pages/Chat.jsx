@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import { sendMessage } from '../services/api'
-import { useTextToSpeech, useSpeechRecognition } from '../hooks/useSpeech'
+import { useVoiceInput, useVoiceOutput } from '../hooks/useVoice'
 
 const GREETING = {
   id: 'greet',
@@ -82,11 +82,11 @@ export default function Chat() {
   const scrollRef = useRef(null)
   const fileRef = useRef(null)
 
-  const { speak, stop, speaking } = useTextToSpeech()
-  const { start, stop: stopMic, listening, supported: micSupported } =
-    useSpeechRecognition({
-      onResult: ({ interim, final }) => setInput(final || interim),
-    })
+  const { speak, stop, speaking } = useVoiceOutput()
+  const voiceIn = useVoiceInput({
+    onTranscript: (text) => setInput((prev) => (prev ? `${prev} ${text}` : text)),
+    onInterim: (text) => setInput(text),
+  })
 
   useEffect(() => {
     scrollRef.current?.scrollTo({
@@ -114,7 +114,7 @@ export default function Chat() {
   const handleSend = async () => {
     const text = input.trim()
     if ((!text && !image) || sending) return
-    if (listening) stopMic()
+    if (voiceIn.active) voiceIn.toggle()
 
     const userMsg = {
       id: `u-${messages.length}`,
@@ -244,17 +244,24 @@ export default function Chat() {
                   handleSend()
                 }
               }}
-              placeholder={listening ? 'Listening…' : 'Describe what happened…'}
+              placeholder={
+                voiceIn.busy
+                  ? 'Transcribing…'
+                  : voiceIn.active
+                    ? 'Listening…'
+                    : 'Describe what happened…'
+              }
               className="max-h-28 w-full resize-none bg-transparent px-4 py-3 text-[15px] text-ink outline-none placeholder:text-ink-soft"
               aria-label="Message"
             />
-            {micSupported && (
+            {voiceIn.supported && (
               <button
                 type="button"
-                onClick={listening ? stopMic : start}
-                aria-label={listening ? 'Stop recording' : 'Record voice'}
-                className={`m-1 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors ${
-                  listening
+                onClick={voiceIn.toggle}
+                disabled={voiceIn.busy}
+                aria-label={voiceIn.active ? 'Stop recording' : 'Record voice'}
+                className={`m-1 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors disabled:opacity-50 ${
+                  voiceIn.active
                     ? 'bg-danger-500 text-white'
                     : 'text-ink-soft active:bg-brand-50'
                 }`}

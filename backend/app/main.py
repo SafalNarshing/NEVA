@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import __version__
 from .config import get_settings
-from .routers import chat, health, live, speech
+from .routers import chat, health, live
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("neva")
@@ -49,7 +49,7 @@ app.add_middleware(
 
 # Routes are exposed both at root (/chat) and under /api (/api/chat) so the
 # frontend works whether or not it prefixes calls with /api.
-for r in (health.router, chat.router, live.router, speech.router):
+for r in (health.router, chat.router, live.router):
     app.include_router(r)
     app.include_router(r, prefix="/api")
 

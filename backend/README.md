@@ -29,11 +29,14 @@ Open http://localhost:8000/docs for interactive API docs.
 | GET    | `/health`        | Liveness + which model / mode is active              |
 | POST   | `/chat`          | Normal multi-turn first-aid chat                     |
 | POST   | `/live`          | Live mode — one calm instruction/question per turn   |
-| POST   | `/asr`           | Speech-to-text (multipart audio) — needs speech deps |
-| POST   | `/tts`           | Text-to-speech → WAV bytes — needs speech deps       |
 
 All routes are also mounted under `/api` (`/api/chat`, `/api/live`, …) to match
 the frontend.
+
+> **Voice (ASR/TTS)** is a **separate local service** — see the prebuilt repo's
+> `server.py` (runs on `:8001`). This orchestrator is LLM-only so it stays light
+> and Railway-deployable. The frontend calls the speech service directly via
+> `VITE_SPEECH_URL`. See "Voice architecture" below.
 
 ### Request / response
 
@@ -81,26 +84,31 @@ MAX_TOKENS=640
 For a true vision model, set `VISION_ENABLED=true` and send a base64 image data
 URL in the `image` field (handled for both providers).
 
-## Real voice — local ASR + TTS
+## Voice architecture (ASR + TTS)
 
-The prebuilt Whisper (Nepali) + Piper voices are wired in as an **optional**
-module, off by default so the base image stays light and Railway-deployable.
+Speech is intentionally **not** in this service. Whisper + Piper are heavy,
+CPU-bound, and hold warm model state, so they live in a dedicated local
+FastAPI microservice inside the prebuilt repo:
+
+```
+frontend
+  ├─ VITE_API_URL    → this orchestrator (:8000)  → Ollama gemma4:12b   [/chat /live]
+  └─ VITE_SPEECH_URL → speech service   (:8001)   → Whisper + Piper     [/asr /tts]
+```
+
+Run the speech service (from the prebuilt repo):
 
 ```bash
-pip install -r requirements-speech.txt      # faster-whisper + piper-tts
+cd <prebuilt-repo>
+venv\Scripts\activate
+uvicorn server:app --host 0.0.0.0 --port 8001
 ```
 
-```env
-SPEECH_ENABLED=true
-ASR_MODEL_NAME=Dragneel/whisper-medium-nepali-openslr-ct2
-TTS_MODEL_DIR=/path/to/models/TTS           # folder with the 4 Piper .onnx/.json files
-```
+- `POST /asr` — multipart `audio` (webm/wav/…) → `{ "text": "…" }`
+- `POST /tts` — `{ "text": "…" }` → `audio/wav` (auto-picks Nepali vs English)
 
-- `POST /asr` — multipart `audio` file → `{ "text": "…" }`
-- `POST /tts` — `{ "text": "…" }` → `audio/wav` (auto-picks Nepali vs English by script)
-
-When `SPEECH_ENABLED=false` (or deps/models missing) these return **503**, and
-the frontend automatically falls back to the browser Web Speech API.
+When `VITE_SPEECH_URL` is unset, the frontend falls back to the browser Web
+Speech API — so the orchestrator alone is enough for a cloud demo.
 
 ## Structure
 
@@ -115,13 +123,12 @@ backend/
     llm/
       client.py        # openai-compat + ollama-native client (httpx)
       mock.py          # offline fallback guidance engine
-    speech/            # optional local voice pipeline
-      asr.py           # faster-whisper (Nepali + English), lazy-loaded
-      tts.py           # Piper voices, auto Nepali/English by script
     routers/
-      health.py  chat.py  live.py  speech.py
-  requirements.txt   requirements-speech.txt   .env.example   Procfile   railway.json
+      health.py  chat.py  live.py
+  requirements.txt   .env.example   Procfile   railway.json
 ```
+
+Speech service (separate, in the prebuilt repo): `server.py` + `pipeline.py`.
 
 ## Deploy on Railway
 

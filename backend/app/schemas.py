@@ -37,4 +37,3 @@ class HealthResponse(BaseModel):
     version: str
     model: str
     mock_mode: bool
-    speech_enabled: bool = False

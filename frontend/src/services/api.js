@@ -17,6 +17,16 @@ export const client = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
+// Separate local speech microservice (Whisper + Piper). When VITE_SPEECH_URL is
+// unset, the app falls back to the browser Web Speech API.
+export const SPEECH_URL = import.meta.env.VITE_SPEECH_URL || ''
+export const HAS_SPEECH = Boolean(SPEECH_URL)
+
+export const speechClient = axios.create({
+  baseURL: SPEECH_URL,
+  timeout: 60000,
+})
+
 /** Small helper so mocked calls feel asynchronous in the UI. */
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -68,31 +78,24 @@ export async function nextLiveStep(payload) {
  * ------------------------------------------------------------------ */
 
 /**
- * Server-side transcription (faster-whisper, Nepali + English).
- * Returns { text }. Requires the backend running with SPEECH_ENABLED=true;
- * otherwise callers should fall back to the browser SpeechRecognition hook.
+ * Server-side transcription via the speech service (faster-whisper, Nepali +
+ * English). Returns { text }. Requires VITE_SPEECH_URL; otherwise callers fall
+ * back to the browser SpeechRecognition hook.
  */
-export async function transcribeAudio(audioBlob) {
+export async function transcribeAudio(audioBlob, filename = 'recording.webm') {
   const form = new FormData()
-  form.append('audio', audioBlob, 'recording.wav')
-  const { data } = await client.post('/api/asr', form, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  form.append('audio', audioBlob, filename)
+  const { data } = await speechClient.post('/asr', form)
   return data // { text }
 }
 
 /**
- * Server-side speech synthesis (Piper). Returns a playable object URL for the
- * WAV audio, or throws if speech is disabled — callers fall back to browser TTS.
+ * Server-side speech synthesis via the speech service (Piper). Returns a
+ * playable object URL for the WAV audio. Caller revokes the URL when done.
  */
 export async function synthesizeSpeech(text) {
-  const resp = await client.post(
-    '/api/tts',
-    { text },
-    { responseType: 'blob' },
-  )
-  const audioUrl = URL.createObjectURL(resp.data)
-  return { audioUrl, text }
+  const resp = await speechClient.post('/tts', { text }, { responseType: 'blob' })
+  return { audioUrl: URL.createObjectURL(resp.data), text }
 }
 
 /* ------------------------------------------------------------------ *

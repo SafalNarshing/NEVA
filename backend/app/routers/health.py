@@ -17,5 +17,4 @@ async def health() -> HealthResponse:
         version=__version__,
         model=settings.model_name,
         mock_mode=settings.mock_mode,
-        speech_enabled=settings.speech_enabled,
     )

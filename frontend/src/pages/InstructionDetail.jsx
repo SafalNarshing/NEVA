@@ -4,7 +4,7 @@ import PageHeader from '../components/PageHeader'
 import DynamicIcon from '../components/DynamicIcon'
 import EmergencyButton from '../components/EmergencyButton'
 import { getGuide } from '../data/firstAid'
-import { useTextToSpeech } from '../hooks/useSpeech'
+import { useVoiceOutput } from '../hooks/useVoice'
 
 const accentMap = {
   brand: 'from-brand-500 to-brand-700',
@@ -15,7 +15,7 @@ const accentMap = {
 export default function InstructionDetail() {
   const { id } = useParams()
   const guide = getGuide(id)
-  const { speak, stop, speaking, supported } = useTextToSpeech()
+  const { speak, stop, speaking, supported } = useVoiceOutput()
 
   if (!guide) {
     return (

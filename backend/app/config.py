@@ -55,23 +55,9 @@ class Settings(BaseSettings):
     # unknown body params, so keep it off for those.
     disable_thinking: bool = Field(default=False, alias="DISABLE_THINKING")
 
-    # --- Speech (local ASR + TTS via the prebuilt pipeline) ----------------
-    # Off by default so the base image stays light and Railway-deployable.
-    # Turn on locally (with requirements-speech.txt installed) for real voice.
-    speech_enabled: bool = Field(default=False, alias="SPEECH_ENABLED")
-
-    # ASR — faster-whisper (CTranslate2). Nepali-tuned model by default.
-    asr_model_name: str = Field(
-        default="Dragneel/whisper-medium-nepali-openslr-ct2", alias="ASR_MODEL_NAME"
-    )
-    asr_device: str = Field(default="cpu", alias="ASR_DEVICE")  # "cpu" | "cuda"
-    asr_compute_type: str = Field(default="int8", alias="ASR_COMPUTE_TYPE")
-
-    # TTS — Piper ONNX voices. Folder must contain the four model/config files:
-    #   ne_NP-google-medium.onnx(.json), en_US-lessac-medium.onnx(.json)
-    tts_model_dir: str = Field(default="models/TTS", alias="TTS_MODEL_DIR")
-    tts_ne_model: str = Field(default="ne_NP-google-medium.onnx", alias="TTS_NE_MODEL")
-    tts_en_model: str = Field(default="en_US-lessac-medium.onnx", alias="TTS_EN_MODEL")
+    # NOTE: ASR + TTS are handled by a separate local speech service (see the
+    # prebuilt repo's server.py). The frontend calls it directly via
+    # VITE_SPEECH_URL. This orchestrator stays LLM-only.
 
     # --- CORS --------------------------------------------------------------
     # Comma-separated list of allowed origins, or "*" for all.
