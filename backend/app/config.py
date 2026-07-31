@@ -45,6 +45,13 @@ class Settings(BaseSettings):
     temperature: float = Field(default=0.4, alias="TEMPERATURE")
     max_tokens: int = Field(default=512, alias="MAX_TOKENS")
 
+    # Ollama context window (tokens). MUST be set explicitly: unset, Ollama uses
+    # a small default that truncates the conversation once the RAG protocol block
+    # is injected — the model then "forgets" recent turns. Big enough to hold
+    # system + protocols + several turns, small enough to avoid over-allocating
+    # toward the model's max context (which can OOM/crash the GPU runner).
+    num_ctx: int = Field(default=8192, alias="NUM_CTX")
+
     # If the provider is a true vision model (e.g. Gemma 3), enable image parts.
     vision_enabled: bool = Field(default=False, alias="VISION_ENABLED")
 

@@ -1,6 +1,7 @@
 import { Routes, Route, Outlet } from 'react-router-dom'
 import PhoneFrame from './components/PhoneFrame'
 import BottomNav from './components/BottomNav'
+import { LanguageProvider } from './i18n/LanguageContext'
 import { ConversationProvider } from './context/ConversationContext'
 import Home from './pages/Home'
 import Instructions from './pages/Instructions'
@@ -24,21 +25,23 @@ function TabbedLayout() {
 export default function App() {
   return (
     <PhoneFrame>
-      <ConversationProvider>
-        <Routes>
-        {/* Immersive full-screen route (no bottom nav) */}
-        <Route path="/live" element={<LiveMode />} />
+      <LanguageProvider>
+        <ConversationProvider>
+          <Routes>
+          {/* Immersive full-screen route (no bottom nav) */}
+          <Route path="/live" element={<LiveMode />} />
 
-        {/* Tabbed screens */}
-        <Route element={<TabbedLayout />}>
-          <Route index element={<Home />} />
-          <Route path="/instructions" element={<Instructions />} />
-          <Route path="/instructions/:id" element={<InstructionDetail />} />
-          <Route path="/chat" element={<Chat />} />
-          <Route path="/map" element={<MapPage />} />
-        </Route>
-        </Routes>
-      </ConversationProvider>
+          {/* Tabbed screens */}
+          <Route element={<TabbedLayout />}>
+            <Route index element={<Home />} />
+            <Route path="/instructions" element={<Instructions />} />
+            <Route path="/instructions/:id" element={<InstructionDetail />} />
+            <Route path="/chat" element={<Chat />} />
+            <Route path="/map" element={<MapPage />} />
+          </Route>
+          </Routes>
+        </ConversationProvider>
+      </LanguageProvider>
     </PhoneFrame>
   )
 }

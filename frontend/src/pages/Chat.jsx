@@ -19,6 +19,7 @@ import { sendMessage } from '../services/api'
 import { useVoiceInput, useVoiceOutput } from '../hooks/useVoice'
 import { useConversation } from '../context/conversation'
 import { useGeolocation } from '../hooks/useGeolocation'
+import { useLanguage } from '../i18n/language'
 import { parseGuidance } from '../utils/guidance'
 import {
   detectContactIntent,
@@ -33,17 +34,19 @@ const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
  * ------------------------------------------------------------------ */
 function Bubble({ msg }) {
   const isUser = msg.role === 'user'
+  const { t } = useLanguage()
+  const content = msg.id === 'greet' ? t('chat.greeting') : msg.content
   return (
     <div className={`flex animate-fade-up ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[82%] ${isUser ? 'items-end' : 'items-start'}`}>
         {msg.image && (
           <img
             src={msg.image}
-            alt="Shared by you"
+            alt={t('chat.sharedByYou')}
             className="mb-1 max-h-48 rounded-2xl object-cover ring-1 ring-line"
           />
         )}
-        {msg.content && (
+        {content && (
           <div
             className={`rounded-3xl px-4 py-2.5 text-[15px] leading-snug shadow-card ${
               isUser
@@ -51,7 +54,7 @@ function Bubble({ msg }) {
                 : 'rounded-bl-lg bg-white text-ink ring-1 ring-line'
             }`}
           >
-            {msg.content}
+            {content}
             {msg.followUp && (
               <p className="mt-2 border-t border-line/70 pt-2 text-sm font-medium text-brand-600">
                 {msg.followUp}
@@ -68,6 +71,7 @@ function Bubble({ msg }) {
  * Play (TTS) control shared by assistant messages
  * ------------------------------------------------------------------ */
 function PlayButton({ msg, onSpeak, isSpeaking }) {
+  const { t } = useLanguage()
   return (
     <button
       type="button"
@@ -76,11 +80,11 @@ function PlayButton({ msg, onSpeak, isSpeaking }) {
     >
       {isSpeaking ? (
         <>
-          <Square size={13} aria-hidden="true" /> Stop
+          <Square size={13} aria-hidden="true" /> {t('chat.stop')}
         </>
       ) : (
         <>
-          <Volume2 size={13} aria-hidden="true" /> Play
+          <Volume2 size={13} aria-hidden="true" /> {t('chat.play')}
         </>
       )}
     </button>
@@ -93,15 +97,17 @@ function PlayButton({ msg, onSpeak, isSpeaking }) {
  * Short replies (no steps / no emergency) fall back to a plain bubble.
  * ------------------------------------------------------------------ */
 function AssistantMessage({ msg, onSpeak, isSpeaking }) {
+  const { t } = useLanguage()
   const g = useMemo(() => parseGuidance(msg.content), [msg.content])
   const structured = Boolean(g.emergency || g.steps.length)
+  const content = msg.id === 'greet' ? t('chat.greeting') : msg.content
 
   if (!structured) {
     return (
       <div className="flex animate-fade-up justify-start">
         <div className="max-w-[85%]">
           <div className="rounded-3xl rounded-bl-lg bg-white px-4 py-2.5 text-[15px] leading-snug text-ink shadow-card ring-1 ring-line">
-            {msg.content}
+            {content}
             {msg.followUp && (
               <p className="mt-2 border-t border-line/70 pt-2 text-sm font-medium text-brand-600">
                 {msg.followUp}
@@ -176,6 +182,7 @@ function AssistantMessage({ msg, onSpeak, isSpeaking }) {
 function CallCard({ msg }) {
   const { target } = msg
   const isAmbulance = target.kind === 'ambulance'
+  const { t } = useLanguage()
   return (
     <div className="flex animate-fade-up justify-start">
       <div className="w-[82%] overflow-hidden rounded-3xl rounded-bl-lg bg-white shadow-card ring-1 ring-line">
@@ -188,7 +195,7 @@ function CallCard({ msg }) {
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
             <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
           </span>
-          Contacting {isAmbulance ? 'Ambulance' : 'Hospital'}…
+          {isAmbulance ? t('chat.contactingAmbulance') : t('chat.contactingHospital')}
         </div>
         <div className="flex items-center gap-3 px-4 py-3">
           <span
@@ -216,12 +223,12 @@ function CallCard({ msg }) {
           </div>
           <a
             href={`tel:${target.number}`}
-            aria-label={`Call ${target.label} at ${target.number}`}
+            aria-label={`${t('chat.call')} ${target.label} ${target.number}`}
             className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-full px-4 font-bold text-white transition-transform active:scale-95 ${
               isAmbulance ? 'bg-danger-500' : 'bg-brand-600'
             }`}
           >
-            <Phone size={16} aria-hidden="true" /> Call
+            <Phone size={16} aria-hidden="true" /> {t('chat.call')}
           </a>
         </div>
       </div>
@@ -234,6 +241,7 @@ function CallCard({ msg }) {
  * ------------------------------------------------------------------ */
 function PromptBubble({ msg, onAnswer }) {
   const resolved = !!msg.resolved
+  const { t } = useLanguage()
   return (
     <div className="flex animate-fade-up justify-start">
       <div className="max-w-[82%]">
@@ -243,6 +251,7 @@ function PromptBubble({ msg, onAnswer }) {
         <div className="mt-2 flex gap-2">
           {msg.actions.map((a) => {
             const chosen = msg.resolved === a.value
+            const label = a.value === 'yes' ? t('chat.flow.yesReached') : t('chat.flow.noAnswer')
             return (
               <button
                 key={a.value}
@@ -261,7 +270,7 @@ function PromptBubble({ msg, onAnswer }) {
               >
                 {a.value === 'yes' && chosen && <Check size={15} aria-hidden="true" />}
                 {a.value === 'no' && chosen && <RotateCcw size={15} aria-hidden="true" />}
-                {a.label}
+                {label}
               </button>
             )
           })}
@@ -274,6 +283,7 @@ function PromptBubble({ msg, onAnswer }) {
 /* ================================================================== */
 
 export default function Chat() {
+  const { lang, t } = useLanguage()
   const { messages, setMessages } = useConversation()
   const [input, setInput] = useState('')
   const [image, setImage] = useState(null)
@@ -286,6 +296,7 @@ export default function Chat() {
   const { coords, locate } = useGeolocation()
   const { speak, stop, speaking } = useVoiceOutput()
   const voiceIn = useVoiceInput({
+    lang: lang === 'ne' ? 'ne-NP' : 'en-US',
     onTranscript: (text) => setInput((prev) => (prev ? `${prev} ${text}` : text)),
     onInterim: (text) => setInput(text),
   })
@@ -309,7 +320,8 @@ export default function Chat() {
       stop()
       setSpeakingId(null)
     } else {
-      speak([msg.content, msg.followUp].filter(Boolean).join('. '))
+      const content = msg.id === 'greet' ? t('chat.greeting') : msg.content
+      speak([content, msg.followUp].filter(Boolean).join('. '))
       setSpeakingId(msg.id)
     }
   }
@@ -328,8 +340,7 @@ export default function Chat() {
     push({
       role: 'assistant',
       type: 'text',
-      content:
-        'Do not worry — I’ll contact help for you right now. Stay with the patient and keep them calm.',
+      content: t('chat.flow.stayCalm'),
     })
     callStep(escalation, 0)
   }
@@ -342,8 +353,8 @@ export default function Chat() {
       type: 'prompt',
       content:
         idx === 0
-          ? `Calling the ambulance on ${target.number}. Were you able to reach them?`
-          : `Now trying ${target.label} (${target.number}). Did they respond?`,
+          ? t('chat.flow.callingAmbulance', { number: target.number })
+          : t('chat.flow.tryingHospital', { label: target.label, number: target.number }),
       flow: { escalation, idx },
       actions: [
         { label: 'Yes, reached', value: 'yes' },
@@ -363,8 +374,7 @@ export default function Chat() {
       push({
         role: 'assistant',
         type: 'text',
-        content:
-          'Good — help is on the way. Keep the patient still and stay with them. Tell me right away if anything changes.',
+        content: t('chat.flow.helpOnWay'),
       })
       return
     }
@@ -375,15 +385,14 @@ export default function Chat() {
       push({
         role: 'assistant',
         type: 'text',
-        content: `No problem — let me try the nearest hospital, ${nh.label}.`,
+        content: t('chat.flow.tryingNearest', { label: nh.label }),
       })
       callStep(escalation, next)
     } else {
       push({
         role: 'assistant',
         type: 'text',
-        content:
-          'We’ve tried the ambulance and the nearest hospitals. Please keep redialling 102 and, if you can, take the patient to the nearest hospital directly. I’m staying right here with you.',
+        content: t('chat.flow.exhausted'),
       })
     }
   }
@@ -419,6 +428,7 @@ export default function Chat() {
         messages: history,
         image: userMsg.image,
         mode: 'chat',
+        language: lang,
       })
       push({
         role: 'assistant',
@@ -434,15 +444,15 @@ export default function Chat() {
   return (
     <div className="flex h-full flex-col bg-canvas">
       <PageHeader
-        title="Chat Mode"
-        subtitle="Text, voice & photos"
+        title={t('chat.title')}
+        subtitle={t('chat.subtitle')}
         back={false}
         right={
           <Link
             to="/live"
             className="inline-flex min-h-[40px] items-center gap-1.5 rounded-full bg-brand-500 px-3.5 text-sm font-bold text-white shadow-card transition-transform active:scale-95"
           >
-            <Radio size={16} aria-hidden="true" /> Live
+            <Radio size={16} aria-hidden="true" /> {t('chat.live')}
           </Link>
         }
       />
@@ -494,13 +504,13 @@ export default function Chat() {
           <div className="relative mb-2 ml-1 inline-block">
             <img
               src={image}
-              alt="Attachment preview"
+              alt={t('chat.attachmentPreview')}
               className="h-16 w-16 rounded-xl object-cover ring-1 ring-line"
             />
             <button
               type="button"
               onClick={() => setImage(null)}
-              aria-label="Remove image"
+              aria-label={t('chat.removeImage')}
               className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-ink text-white"
             >
               <X size={13} aria-hidden="true" />
@@ -519,7 +529,7 @@ export default function Chat() {
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            aria-label="Add a photo"
+            aria-label={t('chat.addPhoto')}
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-canvas text-ink-soft ring-1 ring-line transition-colors active:bg-brand-50"
           >
             <ImagePlus size={20} aria-hidden="true" />
@@ -538,20 +548,20 @@ export default function Chat() {
               }}
               placeholder={
                 voiceIn.busy
-                  ? 'Transcribing…'
+                  ? t('chat.transcribing')
                   : voiceIn.active
-                    ? 'Listening…'
-                    : 'Describe what happened…'
+                    ? t('chat.listening')
+                    : t('chat.inputPlaceholder')
               }
               className="max-h-28 w-full resize-none bg-transparent px-4 py-3 text-[15px] text-ink outline-none placeholder:text-ink-soft"
-              aria-label="Message"
+              aria-label={t('chat.message')}
             />
             {voiceIn.supported && (
               <button
                 type="button"
                 onClick={voiceIn.toggle}
                 disabled={voiceIn.busy}
-                aria-label={voiceIn.active ? 'Stop recording' : 'Record voice'}
+                aria-label={voiceIn.active ? t('chat.stopRecording') : t('chat.recordVoice')}
                 className={`m-1 grid h-9 w-9 shrink-0 place-items-center rounded-full transition-colors disabled:opacity-50 ${
                   voiceIn.active ? 'bg-danger-500 text-white' : 'text-ink-soft active:bg-brand-50'
                 }`}
@@ -565,7 +575,7 @@ export default function Chat() {
             type="button"
             onClick={handleSend}
             disabled={(!input.trim() && !image) || sending}
-            aria-label="Send message"
+            aria-label={t('chat.sendMessage')}
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand-500 text-white shadow-card transition-all active:scale-90 disabled:opacity-40"
           >
             <Send size={19} aria-hidden="true" />

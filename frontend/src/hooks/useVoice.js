@@ -12,12 +12,13 @@ import { useSpeechRecognition, useTextToSpeech } from './useSpeech'
  *  - busy:   transcribing a finished recording (server path only)
  * `onTranscript(finalText)` fires once a final transcript is ready.
  */
-export function useVoiceInput({ onTranscript, onInterim } = {}) {
+export function useVoiceInput({ onTranscript, onInterim, lang = 'en-US' } = {}) {
   const recorder = useAudioRecorder()
   const [transcribing, setTranscribing] = useState(false)
   const [error, setError] = useState(null)
 
   const browser = useSpeechRecognition({
+    lang,
     onResult: ({ interim, final }) => {
       if (interim) onInterim?.(interim)
       if (final) onTranscript?.(final.trim())

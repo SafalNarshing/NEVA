@@ -3,8 +3,10 @@ import { AlertTriangle, Radio, Volume2, Square } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import DynamicIcon from '../components/DynamicIcon'
 import EmergencyButton from '../components/EmergencyButton'
+import LangToggle from '../components/LangToggle'
 import { getGuide } from '../data/firstAid'
 import { useVoiceOutput } from '../hooks/useVoice'
+import { useLanguage } from '../i18n/language'
 
 const accentMap = {
   brand: 'from-brand-500 to-brand-700',
@@ -14,17 +16,18 @@ const accentMap = {
 
 export default function InstructionDetail() {
   const { id } = useParams()
-  const guide = getGuide(id)
+  const { lang, t } = useLanguage()
+  const guide = getGuide(id, lang)
   const { speak, stop, speaking, supported } = useVoiceOutput()
 
   if (!guide) {
     return (
       <div className="min-h-full bg-canvas">
-        <PageHeader title="Not found" />
+        <PageHeader title={t('detail.notFoundTitle')} right={<LangToggle />} />
         <p className="px-5 pt-6 text-sm text-ink-soft">
-          That guide doesn’t exist.{' '}
+          {t('detail.notFound')}{' '}
           <Link to="/instructions" className="font-semibold text-brand-600">
-            Back to guides
+            {t('detail.backToGuides')}
           </Link>
         </p>
       </div>
@@ -33,8 +36,9 @@ export default function InstructionDetail() {
 
   const readAloud = () => {
     if (speaking) return stop()
+    const stepLabel = lang === 'ne' ? 'चरण' : 'Step'
     const script = `${guide.title}. ${guide.overview} ${guide.steps
-      .map((s, i) => `Step ${i + 1}. ${s.title}. ${s.detail}`)
+      .map((s, i) => `${stepLabel} ${i + 1}. ${s.title}. ${s.detail}`)
       .join(' ')}`
     speak(script)
   }
@@ -45,7 +49,7 @@ export default function InstructionDetail() {
       <div
         className={`bg-gradient-to-br ${accentMap[guide.accent]} rounded-b-[2rem] pb-6`}
       >
-        <PageHeader title={guide.title} subtitle={guide.tagline} onDark />
+        <PageHeader title={guide.title} subtitle={guide.tagline} onDark right={<LangToggle onDark />} />
         <div className="flex items-center gap-4 px-5 pt-1">
           <span className="grid h-16 w-16 shrink-0 place-items-center rounded-3xl bg-white/20 text-white backdrop-blur">
             <DynamicIcon name={guide.icon} size={30} strokeWidth={2.2} />
@@ -61,11 +65,11 @@ export default function InstructionDetail() {
             >
               {speaking ? (
                 <>
-                  <Square size={17} aria-hidden="true" /> Stop
+                  <Square size={17} aria-hidden="true" /> {t('detail.stop')}
                 </>
               ) : (
                 <>
-                  <Volume2 size={18} aria-hidden="true" /> Read aloud
+                  <Volume2 size={18} aria-hidden="true" /> {t('detail.readAloud')}
                 </>
               )}
             </button>
@@ -74,7 +78,7 @@ export default function InstructionDetail() {
             to="/live"
             className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl bg-white px-4 font-bold text-ink transition-transform active:scale-95"
           >
-            <Radio size={18} aria-hidden="true" /> Go Live
+            <Radio size={18} aria-hidden="true" /> {t('detail.goLive')}
           </Link>
         </div>
       </div>
@@ -102,7 +106,7 @@ export default function InstructionDetail() {
       {/* Warnings */}
       <div className="mx-5 mt-5 rounded-3xl bg-danger-50 p-4 ring-1 ring-danger-100">
         <h3 className="flex items-center gap-2 font-bold text-danger-600">
-          <AlertTriangle size={18} aria-hidden="true" /> Important
+          <AlertTriangle size={18} aria-hidden="true" /> {t('detail.important')}
         </h3>
         <ul className="mt-2 space-y-1.5">
           {guide.warnings.map((w, i) => (

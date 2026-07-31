@@ -6,15 +6,13 @@ import { nextLiveStep, HAS_BACKEND_WS } from '../services/api'
 import { useVoiceInput, useVoiceOutput } from '../hooks/useVoice'
 import { useLiveStream } from '../hooks/useLiveStream'
 import { useSentenceSpeaker } from '../hooks/useSentenceSpeaker'
-
-// Reply text pre-cached by the speech service → spoken in ~0ms on entry.
-const OPENER = 'I am here with you. Stay calm, we will do this together.'
-const OPENER_PROMPT = 'Tap the mic and tell me what’s happening.'
+import { useLanguage } from '../i18n/language'
 
 export default function LiveMode() {
   const navigate = useNavigate()
-  const [turnText, setTurnText] = useState(OPENER)
-  const [prompt, setPrompt] = useState(OPENER_PROMPT)
+  const { lang, t } = useLanguage()
+  const [turnText, setTurnText] = useState(() => t('live.opener'))
+  const [prompt, setPrompt] = useState(() => t('live.openerPrompt'))
   const [interim, setInterim] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [muted, setMuted] = useState(false)
@@ -37,7 +35,7 @@ export default function LiveMode() {
   const fallbackTurn = useCallback(
     async (messages) => {
       try {
-        const res = await nextLiveStep({ messages, mode: 'live' })
+        const res = await nextLiveStep({ messages, mode: 'live', language: lang })
         const full = [res.reply, res.followUp].filter(Boolean).join(' ')
         setTurnText(res.reply)
         setPrompt(res.followUp || '')
@@ -47,7 +45,7 @@ export default function LiveMode() {
         setStreaming(false)
       }
     },
-    [voiceOut],
+    [voiceOut, lang],
   )
 
   const handleFinal = useCallback(
@@ -68,7 +66,7 @@ export default function LiveMode() {
 
       liveStream.start({
         messages,
-        language: 'auto',
+        language: lang,
         onToken: (full) => setTurnText(full),
         onSentence: (s) => {
           if (!mutedRef.current) speaker.enqueue(s)
@@ -80,21 +78,22 @@ export default function LiveMode() {
         onError: () => fallbackTurn(messages),
       })
     },
-    [stopAll, liveStream, speaker, fallbackTurn],
+    [stopAll, liveStream, speaker, fallbackTurn, lang],
   )
 
   const voiceIn = useVoiceInput({
+    lang: lang === 'ne' ? 'ne-NP' : 'en-US',
     onTranscript: handleFinal,
     onInterim: setInterim,
   })
 
   // Greet + speak the cached opener on entry.
   useEffect(() => {
-    const t = setTimeout(() => {
-      if (!mutedRef.current) speaker.enqueue(OPENER)
+    const timer = setTimeout(() => {
+      if (!mutedRef.current) speaker.enqueue(t('live.opener'))
     }, 400)
     return () => {
-      clearTimeout(t)
+      clearTimeout(timer)
       stopAll()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -126,14 +125,14 @@ export default function LiveMode() {
 
   const status =
     voiceIn.busy
-      ? 'Transcribing…'
+      ? t('live.statusTranscribing')
       : phase === 'listening'
-        ? 'Listening…'
+        ? t('live.statusListening')
         : phase === 'thinking'
-          ? 'Thinking…'
+          ? t('live.statusThinking')
           : phase === 'speaking'
-            ? 'Speaking…'
-            : 'Tap the mic to talk'
+            ? t('live.statusSpeaking')
+            : t('live.statusIdle')
 
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-[#1a0f4d] via-brand-800 to-[#0f0833] text-white">
@@ -145,7 +144,7 @@ export default function LiveMode() {
             style={{ animation: 'neva-bar 1.2s ease-in-out infinite' }}
             aria-hidden="true"
           />
-          Live · NEVA
+          {t('live.header')}
         </span>
         <button
           type="button"
@@ -192,7 +191,7 @@ export default function LiveMode() {
           capture="environment"
           className="hidden"
           onChange={(e) => {
-            if (e.target.files?.[0]) handleFinal('I’m sharing a photo of the injury.')
+            if (e.target.files?.[0]) handleFinal(t('live.photoShare'))
             e.target.value = ''
           }}
         />

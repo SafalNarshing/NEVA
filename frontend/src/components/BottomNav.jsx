@@ -1,21 +1,23 @@
 import { NavLink } from 'react-router-dom'
 import { Home, BookOpen, MessagesSquare, MapPin } from 'lucide-react'
+import { useLanguage } from '../i18n/language'
 
 const items = [
-  { to: '/', label: 'Home', icon: Home, end: true },
-  { to: '/instructions', label: 'Guides', icon: BookOpen },
-  { to: '/chat', label: 'Chat', icon: MessagesSquare },
-  { to: '/map', label: 'Nearby', icon: MapPin },
+  { to: '/', labelKey: 'nav.home', icon: Home, end: true },
+  { to: '/instructions', labelKey: 'nav.guides', icon: BookOpen },
+  { to: '/chat', labelKey: 'nav.chat', icon: MessagesSquare },
+  { to: '/map', labelKey: 'nav.nearby', icon: MapPin },
 ]
 
 export default function BottomNav() {
+  const { t } = useLanguage()
   return (
     <nav
-      aria-label="Primary"
+      aria-label={t('nav.primary')}
       className="relative z-20 shrink-0 border-t border-line bg-white/95 px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur"
     >
       <ul className="flex items-stretch justify-around">
-        {items.map(({ to, label, icon: Icon, end }) => (
+        {items.map(({ to, labelKey, icon: Icon, end }) => (
           <li key={to} className="flex-1">
             <NavLink
               to={to}
@@ -40,7 +42,7 @@ export default function BottomNav() {
                       isActive ? 'text-brand-600' : 'text-ink-soft'
                     }`}
                   >
-                    {label}
+                    {t(labelKey)}
                   </span>
                 </>
               )}

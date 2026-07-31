@@ -8,10 +8,11 @@ import {
   Sparkles,
 } from 'lucide-react'
 import Logo from '../components/Logo'
-import StatusPill from '../components/StatusPill'
+import LangToggle from '../components/LangToggle'
 import EmergencyButton from '../components/EmergencyButton'
 import DynamicIcon from '../components/DynamicIcon'
-import { firstAidGuides } from '../data/firstAid'
+import { getGuides } from '../data/firstAid'
+import { useLanguage } from '../i18n/language'
 
 const accentMap = {
   brand: 'from-brand-100 to-brand-50 text-brand-600',
@@ -39,21 +40,24 @@ function SecondaryCard({ to, icon: Icon, title, sub, tint }) {
 }
 
 export default function Home() {
+  const { lang, t } = useLanguage()
+  const guides = getGuides(lang)
+
   return (
     <div className="min-h-full bg-canvas pb-6">
       {/* Header */}
       <header className="flex items-center justify-between px-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <Logo />
-        <StatusPill />
+        <LangToggle />
       </header>
 
       {/* Greeting */}
       <section className="px-5 pt-5">
-        <p className="text-sm font-medium text-ink-soft">Hi there 👋</p>
+        <p className="text-sm font-medium text-ink-soft">{t('home.greeting')}</p>
         <h1 className="mt-0.5 text-[26px] font-extrabold leading-tight tracking-tight text-ink">
-          How can I help you
+          {t('home.heroLine1')}
           <br />
-          in this emergency?
+          {t('home.heroLine2')}
         </h1>
       </section>
 
@@ -73,14 +77,14 @@ export default function Home() {
           />
           <div className="relative flex items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-bold text-white">
-              <Sparkles size={13} aria-hidden="true" /> AI Guided
+              <Sparkles size={13} aria-hidden="true" /> {t('home.aiGuided')}
             </span>
           </div>
           <div className="relative mt-4 flex items-end justify-between">
             <div>
-              <h2 className="text-xl font-extrabold text-white">Live Mode</h2>
+              <h2 className="text-xl font-extrabold text-white">{t('home.liveMode')}</h2>
               <p className="mt-1 max-w-[15rem] text-sm text-brand-100">
-                Calm, real-time voice guidance — one step at a time.
+                {t('home.liveModeSub')}
               </p>
             </div>
             <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-brand-600">
@@ -100,33 +104,33 @@ export default function Home() {
         <SecondaryCard
           to="/chat"
           icon={MessagesSquare}
-          title="Chat Mode"
-          sub="Type, talk, or share a photo"
+          title={t('home.chatMode')}
+          sub={t('home.chatModeSub')}
           tint="from-teal-100 to-teal-50 text-teal-600"
         />
         <SecondaryCard
           to="/instructions"
           icon={BookOpen}
-          title="Instructions"
-          sub="Step-by-step first-aid"
+          title={t('home.instructions')}
+          sub={t('home.instructionsSub')}
           tint="from-brand-100 to-brand-50 text-brand-600"
         />
         <SecondaryCard
           to="/map"
           icon={MapPin}
-          title="Nearby Help"
-          sub="Hospitals & pharmacies"
+          title={t('home.nearby')}
+          sub={t('home.nearbySub')}
           tint="from-danger-100 to-danger-50 text-danger-600"
         />
         <div className="flex flex-col justify-between rounded-3xl bg-ink p-4 text-white shadow-card">
           <span className="text-xs font-semibold text-white/60">
-            Emergency line
+            {t('home.emergencyLine')}
           </span>
           <div>
             <p className="text-3xl font-black leading-none">102</p>
             <EmergencyButton
               number="102"
-              label="Call now"
+              label={t('home.callNow')}
             />
           </div>
         </div>
@@ -135,16 +139,16 @@ export default function Home() {
       {/* Quick guides */}
       <section className="pt-6">
         <div className="flex items-center justify-between px-5">
-          <h2 className="text-base font-bold text-ink">Quick guides</h2>
+          <h2 className="text-base font-bold text-ink">{t('home.quickGuides')}</h2>
           <Link
             to="/instructions"
             className="inline-flex items-center gap-0.5 text-sm font-semibold text-brand-600"
           >
-            See all <ChevronRight size={16} aria-hidden="true" />
+            {t('home.seeAll')} <ChevronRight size={16} aria-hidden="true" />
           </Link>
         </div>
         <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto px-5 pb-1">
-          {firstAidGuides.slice(0, 6).map((g) => (
+          {guides.slice(0, 6).map((g) => (
             <Link
               key={g.id}
               to={`/instructions/${g.id}`}

@@ -11,6 +11,7 @@ import DynamicIcon from '../components/DynamicIcon'
 import EmergencyButton from '../components/EmergencyButton'
 import { hospitals, emergencyNumbers, distanceKm } from '../data/hospitals'
 import { useGeolocation } from '../hooks/useGeolocation'
+import { useLanguage } from '../i18n/language'
 
 const typeTint = {
   Hospital: 'from-danger-100 to-danger-50 text-danger-600',
@@ -30,6 +31,7 @@ function driveTo(lat, lng) {
 }
 
 export default function MapPage() {
+  const { t } = useLanguage()
   const { coords, status, error, locate } = useGeolocation()
   const [filter, setFilter] = useState('All')
 
@@ -48,8 +50,8 @@ export default function MapPage() {
   return (
     <div className="min-h-full bg-canvas pb-6">
       <PageHeader
-        title="Nearby Help"
-        subtitle="Kathmandu Valley & Dhulikhel"
+        title={t('map.title')}
+        subtitle={t('map.subtitle')}
         back={false}
       />
 
@@ -100,7 +102,11 @@ export default function MapPage() {
           className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-2 text-xs font-bold text-brand-600 shadow-card backdrop-blur transition-transform active:scale-95"
         >
           <Crosshair size={15} aria-hidden="true" />
-          {status === 'loading' ? 'Locating…' : coords ? 'Located' : 'Use my location'}
+          {status === 'loading'
+            ? t('map.locating')
+            : coords
+              ? t('map.located')
+              : t('map.useLocation')}
         </button>
       </div>
 
@@ -121,7 +127,7 @@ export default function MapPage() {
               <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-50 text-brand-600">
                 <DynamicIcon name={n.icon} size={17} aria-hidden="true" />
               </span>
-              <span className="text-[11px] font-semibold text-ink">{n.label}</span>
+              <span className="text-[11px] font-semibold text-ink">{t(`number.${n.label}`)}</span>
               <span className="text-[11px] font-bold text-brand-600">{n.number}</span>
             </a>
           ))}
@@ -141,7 +147,7 @@ export default function MapPage() {
                 : 'bg-white text-ink-soft ring-1 ring-line'
             }`}
           >
-            {f}
+            {t(`filter.${f}`)}
           </button>
         ))}
       </div>
@@ -164,7 +170,7 @@ export default function MapPage() {
                 <p className="truncate text-xs text-ink-soft">{h.area}</p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <span className="rounded-full bg-canvas px-2 py-0.5 text-[10px] font-bold text-ink-soft">
-                    {h.type}
+                    {t(`filter.${h.type}`)}
                   </span>
                   {h.open24 && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2 py-0.5 text-[10px] font-bold text-teal-700">
@@ -176,7 +182,7 @@ export default function MapPage() {
                       {h.dist < 1
                         ? `${Math.round(h.dist * 1000)} m`
                         : `${h.dist.toFixed(1)} km`}{' '}
-                      away
+                      {t('map.away')}
                     </span>
                   )}
                 </div>
@@ -187,14 +193,14 @@ export default function MapPage() {
                 href={`tel:${h.phone}`}
                 className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-2xl bg-teal-500 font-bold text-white transition-transform active:scale-95"
               >
-                <Phone size={17} aria-hidden="true" /> Call
+                <Phone size={17} aria-hidden="true" /> {t('map.call')}
               </a>
               <button
                 type="button"
                 onClick={() => driveTo(h.lat, h.lng)}
                 className="inline-flex min-h-[42px] flex-1 items-center justify-center gap-2 rounded-2xl bg-brand-50 font-bold text-brand-600 transition-transform active:scale-95"
               >
-                <Navigation size={17} aria-hidden="true" /> Drive
+                <Navigation size={17} aria-hidden="true" /> {t('map.drive')}
               </button>
             </div>
           </li>

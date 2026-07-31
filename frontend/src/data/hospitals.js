@@ -80,7 +80,7 @@ export const hospitals = [
     type: 'Pharmacy',
     area: 'Baneshwor, Kathmandu',
     phone: '+977-1-4780123',
-    lat: ,27.672483527901804, 
+    lat: 27.672483527901804, 
     lng: 85.38772957042447,
     open24: false,
   },

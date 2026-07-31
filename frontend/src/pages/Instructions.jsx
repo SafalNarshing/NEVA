@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { Search, ChevronRight, Clock } from 'lucide-react'
 import PageHeader from '../components/PageHeader'
 import DynamicIcon from '../components/DynamicIcon'
-import StatusPill from '../components/StatusPill'
-import { firstAidGuides } from '../data/firstAid'
+import LangToggle from '../components/LangToggle'
+import { getGuides } from '../data/firstAid'
+import { useLanguage } from '../i18n/language'
 
 const accentMap = {
   brand: 'from-brand-100 to-brand-50 text-brand-600',
@@ -17,18 +18,19 @@ const severityMap = {
 }
 
 export default function Instructions() {
+  const { lang, t } = useLanguage()
   const [query, setQuery] = useState('')
-  const guides = firstAidGuides.filter((g) =>
+  const guides = getGuides(lang).filter((g) =>
     (g.title + g.tagline).toLowerCase().includes(query.toLowerCase()),
   )
 
   return (
     <div className="min-h-full bg-canvas pb-6">
       <PageHeader
-        title="First-Aid Guides"
-        subtitle="Step-by-step, works offline"
+        title={t('guides.title')}
+        subtitle={t('guides.subtitle')}
         back={false}
-        right={<StatusPill />}
+        right={<LangToggle />}
       />
 
       <div className="px-5 pt-4">
@@ -38,9 +40,9 @@ export default function Instructions() {
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search emergencies…"
+            placeholder={t('guides.search')}
             className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-ink-soft"
-            aria-label="Search first-aid guides"
+            aria-label={t('guides.search')}
           />
         </label>
       </div>
@@ -63,13 +65,13 @@ export default function Instructions() {
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${severityMap[g.severity]}`}
                 >
-                  {g.severity}
+                  {t(`severity.${g.severity}`)}
                 </span>
               </div>
               <p className="truncate text-xs text-ink-soft">{g.tagline}</p>
               <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-ink-soft">
                 <Clock size={12} aria-hidden="true" /> {g.time} ·{' '}
-                {g.steps.length} steps
+                {g.steps.length} {t('units.steps')}
               </span>
             </div>
             <ChevronRight
@@ -82,7 +84,7 @@ export default function Instructions() {
 
         {guides.length === 0 && (
           <p className="rounded-3xl bg-white p-6 text-center text-sm text-ink-soft shadow-card ring-1 ring-line">
-            No guides match “{query}”. Try Chat Mode for anything not listed.
+            {t('guides.noMatch', { q: query })}
           </p>
         )}
       </div>

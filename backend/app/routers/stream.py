@@ -40,7 +40,7 @@ async def ws_live(ws: WebSocket) -> None:
 
         # Mock path — stream the canned reply word-by-word so the UX is identical.
         if settings.mock_mode:
-            reply, follow = mock_reply(req.messages, None, "live")
+            reply, follow = mock_reply(req.messages, None, "live", req.language)
             for word in f"{reply} {follow or ''}".split():
                 await ws.send_json({"type": "token", "text": word + " "})
             await ws.send_json({"type": "done"})

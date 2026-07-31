@@ -114,6 +114,10 @@ class LLMClient:
             "options": {
                 "temperature": self._settings.temperature,
                 "num_predict": self._settings.max_tokens,
+                # Explicit context window — keeps conversation history from being
+                # truncated by the large RAG system prompt (and avoids the runner
+                # over-allocating toward the model's 256K max).
+                "num_ctx": self._settings.num_ctx,
             },
         }
 

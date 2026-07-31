@@ -36,7 +36,7 @@ async def generate_guidance(req: ChatRequest) -> ChatResponse:
 
     # --- Mock path (no credentials / USE_MOCK) -----------------------------
     if settings.mock_mode:
-        reply, follow = mock_reply(req.messages, req.image, req.mode)
+        reply, follow = mock_reply(req.messages, req.image, req.mode, req.language)
         return ChatResponse(reply=reply, followUp=follow, mode=req.mode)
 
     # --- Real provider -----------------------------------------------------

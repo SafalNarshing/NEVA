@@ -18,7 +18,7 @@ export function useTextToSpeech() {
       const u = new SpeechSynthesisUtterance(text)
       u.rate = 0.98
       u.pitch = 1
-      u.lang = 'en-US'
+      u.lang = /[ऀ-ॿ]/.test(text) ? 'ne-NP' : 'en-US'
       u.onstart = () => setSpeaking(true)
       u.onend = () => setSpeaking(false)
       u.onerror = () => setSpeaking(false)
@@ -42,7 +42,7 @@ export function useTextToSpeech() {
  * Speech-to-text using the browser SpeechRecognition API.
  * onResult receives interim and final transcripts.
  */
-export function useSpeechRecognition({ onResult, onEnd } = {}) {
+export function useSpeechRecognition({ onResult, onEnd, lang = 'en-US' } = {}) {
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef(null)
   const [supported] = useState(
@@ -57,7 +57,7 @@ export function useSpeechRecognition({ onResult, onEnd } = {}) {
     const rec = new Ctor()
     rec.continuous = false
     rec.interimResults = true
-    rec.lang = 'en-US'
+    rec.lang = lang
 
     rec.onresult = (e) => {
       let interim = ''
@@ -77,7 +77,7 @@ export function useSpeechRecognition({ onResult, onEnd } = {}) {
     recognitionRef.current = rec
     return () => rec.abort()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [supported])
+  }, [supported, lang])
 
   const start = useCallback(() => {
     if (!supported || !recognitionRef.current) return
