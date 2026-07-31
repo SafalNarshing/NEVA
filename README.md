@@ -1,3 +1,5 @@
+<!-- <p align="center"><img src="docs/logo.png" alt="NEVA logo" width="160"></p> -->
+
 # NEVA — Nepal Emergency Voice Assistant
 
 Calm, step-by-step first-aid guidance in **English and Nepali** — by voice, chat,
