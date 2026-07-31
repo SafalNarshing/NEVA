@@ -12,6 +12,7 @@ Switching providers is config-only (LLM_PROVIDER + MODEL_API_URL/KEY/NAME).
 
 import base64
 import json
+import re
 from functools import lru_cache
 from typing import Optional
 
@@ -23,6 +24,50 @@ from ..schemas import Message
 
 class LLMError(Exception):
     """Raised when the model provider cannot be reached or returns an error."""
+
+
+_THOUGHT_BLOCK_RE = re.compile(r"<thought>.*?</thought>", re.DOTALL)
+
+
+def _strip_thinking(text: str) -> str:
+    """Remove inline <thought>...</thought> reasoning.
+
+    Some Gemma deployments (e.g. gemma-4-*-it via Google's Gemini API) always
+    emit their reasoning inline in the content, with no request param able to
+    suppress it (unlike Ollama's think=false). Left in, it would be spoken
+    aloud verbatim in Live mode, so it's stripped here for every provider.
+    """
+    return _THOUGHT_BLOCK_RE.sub("", text).strip()
+
+
+class _ThoughtStreamFilter:
+    """Stateful filter that strips <thought>...</thought> spans from a token
+    stream, even when the tags are split across separate chunks."""
+
+    def __init__(self):
+        self._in_thought = False
+        self._buf = ""
+
+    def feed(self, chunk: str) -> str:
+        self._buf += chunk
+        out = []
+        while True:
+            tag = "</thought>" if self._in_thought else "<thought>"
+            idx = self._buf.find(tag)
+            if idx == -1:
+                if not self._in_thought:
+                    # Emit everything except a possible partial tag at the end.
+                    keep = min(len(self._buf), len(tag) - 1)
+                    split = len(self._buf) - keep
+                    out.append(self._buf[:split])
+                    self._buf = self._buf[split:]
+                # else: mid-thought with no closing tag yet — hold the buffer.
+                break
+            if not self._in_thought:
+                out.append(self._buf[:idx])
+            self._buf = self._buf[idx + len(tag):]
+            self._in_thought = not self._in_thought
+        return "".join(out)
 
 
 def _image_to_base64(data_url: str) -> Optional[str]:
@@ -158,7 +203,7 @@ class LLMClient:
             )
 
         try:
-            return parse(resp.json())
+            return _strip_thinking(parse(resp.json()))
         except (KeyError, IndexError, ValueError) as exc:
             raise LLMError("Unexpected response format from model provider.") from exc
 
@@ -193,10 +238,13 @@ class LLMClient:
                     if resp.status_code >= 400:
                         detail = (await resp.aread())[:400]
                         raise LLMError(f"Model provider error {resp.status_code}: {detail}")
+                    thought_filter = _ThoughtStreamFilter()
                     async for line in resp.aiter_lines():
                         delta = self._parse_stream_line(line)
                         if delta:
-                            yield delta
+                            clean = thought_filter.feed(delta)
+                            if clean:
+                                yield clean
         except httpx.TimeoutException as exc:
             raise LLMError("The model took too long to respond.") from exc
         except httpx.HTTPError as exc:

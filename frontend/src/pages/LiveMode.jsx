@@ -8,16 +8,27 @@ import { useLiveStream } from '../hooks/useLiveStream'
 import { useSentenceSpeaker } from '../hooks/useSentenceSpeaker'
 import { useLanguage } from '../i18n/language'
 
+const uid = () => `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+
 export default function LiveMode() {
   const navigate = useNavigate()
   const { lang, t } = useLanguage()
-  const [turnText, setTurnText] = useState(() => t('live.opener'))
-  const [prompt, setPrompt] = useState(() => t('live.openerPrompt'))
+
+  // Scrollable transcript of the whole session: user turns + NEVA's replies.
+  const [transcript, setTranscript] = useState(() => [
+    {
+      id: uid(),
+      role: 'assistant',
+      content: t('live.opener'),
+      followUp: t('live.openerPrompt'),
+    },
+  ])
   const [interim, setInterim] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [muted, setMuted] = useState(false)
 
   const fileRef = useRef(null)
+  const scrollRef = useRef(null)
   const mutedRef = useRef(false)
   const historyRef = useRef([])
 
@@ -31,21 +42,42 @@ export default function LiveMode() {
     liveStream.close()
   }, [speaker, voiceOut, liveStream])
 
+  const pushTranscript = useCallback((msg) => {
+    setTranscript((list) => [...list, msg])
+  }, [])
+
+  const updateTranscript = useCallback((id, content, followUp) => {
+    setTranscript((list) =>
+      list.map((m) =>
+        m.id === id
+          ? { ...m, content: content ?? m.content, followUp: followUp ?? m.followUp }
+          : m,
+      ),
+    )
+  }, [])
+
+  // Keep the newest turn pinned to the bottom as it streams in.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [transcript, interim, streaming])
+
   // Non-streaming fallback (no WS / stream error): one request, then speak.
   const fallbackTurn = useCallback(
-    async (messages) => {
+    async (messages, asstId) => {
       try {
         const res = await nextLiveStep({ messages, mode: 'live', language: lang })
         const full = [res.reply, res.followUp].filter(Boolean).join(' ')
-        setTurnText(res.reply)
-        setPrompt(res.followUp || '')
+        updateTranscript(asstId, res.reply, res.followUp || '')
         historyRef.current = [...messages, { role: 'assistant', content: res.reply }]
         if (!mutedRef.current) voiceOut.speak(full)
       } finally {
         setStreaming(false)
       }
     },
-    [voiceOut, lang],
+    [voiceOut, lang, updateTranscript],
   )
 
   const handleFinal = useCallback(
@@ -55,30 +87,33 @@ export default function LiveMode() {
       stopAll()
       const messages = [...historyRef.current, { role: 'user', content: text }]
       historyRef.current = messages
-      setTurnText('')
-      setPrompt('')
       setStreaming(true)
 
+      pushTranscript({ id: uid(), role: 'user', content: text })
+      const asstId = uid()
+      pushTranscript({ id: asstId, role: 'assistant', content: '' })
+
       if (!HAS_BACKEND_WS) {
-        fallbackTurn(messages)
+        fallbackTurn(messages, asstId)
         return
       }
 
       liveStream.start({
         messages,
         language: lang,
-        onToken: (full) => setTurnText(full),
+        onToken: (full) => updateTranscript(asstId, full),
         onSentence: (s) => {
           if (!mutedRef.current) speaker.enqueue(s)
         },
         onDone: (full) => {
+          updateTranscript(asstId, full)
           historyRef.current = [...messages, { role: 'assistant', content: full }]
           setStreaming(false)
         },
-        onError: () => fallbackTurn(messages),
+        onError: () => fallbackTurn(messages, asstId),
       })
     },
-    [stopAll, liveStream, speaker, fallbackTurn, lang],
+    [stopAll, liveStream, speaker, fallbackTurn, lang, pushTranscript, updateTranscript],
   )
 
   const voiceIn = useVoiceInput({
@@ -134,6 +169,8 @@ export default function LiveMode() {
             ? t('live.statusSpeaking')
             : t('live.statusIdle')
 
+  const lastAsstId = [...transcript].reverse().find((m) => m.role === 'assistant')?.id
+
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-[#1a0f4d] via-brand-800 to-[#0f0833] text-white">
       {/* Header */}
@@ -157,29 +194,76 @@ export default function LiveMode() {
       </header>
 
       {/* Sphere */}
-      <div className="flex flex-col items-center pt-10">
-        <GradientSphere state={phase} size={210} />
-        <p className="mt-7 h-5 text-sm font-medium text-brand-100">{status}</p>
+      <div className="flex flex-col items-center pt-6">
+        <GradientSphere state={phase} size={150} />
+        <p className="mt-4 h-5 text-sm font-medium text-brand-100">{status}</p>
       </div>
 
-      {/* Streaming guidance */}
-      <div className="no-scrollbar mt-4 flex-1 overflow-y-auto px-6">
-        <div className="mx-auto max-w-sm text-center">
-          <p className="text-[19px] font-semibold leading-relaxed text-white">
-            {turnText}
-            {streaming && !turnText && (
-              <span className="opacity-60">…</span>
-            )}
-          </p>
-          {prompt && (
-            <p className="mt-4 rounded-2xl bg-white/10 px-4 py-3 text-[15px] font-medium text-brand-100 backdrop-blur">
-              {prompt}
-            </p>
-          )}
-          {interim && (
-            <p className="mt-4 text-sm italic text-white/70">“{interim}”</p>
-          )}
-        </div>
+      {/* Scrollable transcript */}
+      <div ref={scrollRef} className="no-scrollbar mt-4 flex-1 space-y-3 overflow-y-auto px-5 pb-2">
+        {transcript.map((m) => {
+          const isUser = m.role === 'user'
+          const isLiveAssistant = !isUser && m.id === lastAsstId && streaming
+          return (
+            <div
+              key={m.id}
+              className={`flex animate-fade-up ${isUser ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className="max-w-[85%]">
+                <p
+                  className={`mb-1 px-1 text-[10px] font-bold uppercase tracking-wide ${
+                    isUser ? 'text-right text-brand-300' : 'text-white/50'
+                  }`}
+                >
+                  {isUser ? t('live.you') : t('live.assistant')}
+                </p>
+                <div
+                  className={`rounded-3xl px-4 py-2.5 text-[15px] leading-snug shadow-card ${
+                    isUser
+                      ? 'rounded-br-lg bg-brand-500 text-white'
+                      : 'rounded-bl-lg bg-white text-ink'
+                  }`}
+                >
+                  {m.content}
+                  {isLiveAssistant && !m.content && (
+                    <span className="inline-flex items-center gap-1">
+                      {[0, 1, 2].map((i) => (
+                        <span
+                          key={i}
+                          className="h-1.5 w-1.5 rounded-full bg-brand-300"
+                          style={{
+                            animation: 'neva-bar 1s ease-in-out infinite',
+                            animationDelay: `${i * 0.15}s`,
+                          }}
+                        />
+                      ))}
+                    </span>
+                  )}
+                  {!isUser && m.followUp && (
+                    <p className="mt-2 border-t border-line/70 pt-2 text-sm font-medium text-brand-600">
+                      {m.followUp}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Live draft of what the mic is hearing right now */}
+        {interim && (
+          <div className="flex animate-fade-up justify-end">
+            <div className="max-w-[85%]">
+              <p className="mb-1 px-1 text-right text-[10px] font-bold uppercase tracking-wide text-brand-300">
+                {t('live.you')}
+              </p>
+              <div className="rounded-3xl rounded-br-lg bg-brand-500/85 px-4 py-2.5 text-[15px] leading-snug text-white backdrop-blur">
+                {interim}
+                <span className="ml-1 inline-block h-3.5 w-0.5 animate-pulse bg-white/90 align-middle" />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Controls */}

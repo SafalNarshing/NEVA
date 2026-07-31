@@ -96,6 +96,8 @@ export const translations = {
 
     /* Live mode */
     'live.header': 'Live · NEVA',
+    'live.you': 'You',
+    'live.assistant': 'NEVA',
     'live.statusTranscribing': 'Transcribing…',
     'live.statusListening': 'Listening…',
     'live.statusThinking': 'Thinking…',
@@ -219,6 +221,8 @@ export const translations = {
 
     /* Live mode */
     'live.header': 'लाइभ · नेभा',
+    'live.you': 'तपाईं',
+    'live.assistant': 'नेभा',
     'live.statusTranscribing': 'ट्रान्सक्रिप्ट गर्दैँ…',
     'live.statusListening': 'सुन्दैँ…',
     'live.statusThinking': 'सोच्दैँ…',

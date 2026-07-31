@@ -92,14 +92,38 @@ python -m app.rag.build_db --rebuild        # embeds seeds → app/rag/chroma_db
 Change env vars only — no code change. `LLM_PROVIDER=openai` covers every
 OpenAI-compatible API; `LLM_PROVIDER=ollama` uses Ollama's native API.
 
-| Provider       | `LLM_PROVIDER` | `MODEL_API_URL`                    | `MODEL_NAME` example            |
-| -------------- | -------------- | ---------------------------------- | ------------------------------- |
-| Groq           | `openai`       | `https://api.groq.com/openai/v1`   | `llama-3.1-8b-instant`          |
-| Hugging Face   | `openai`       | `https://router.huggingface.co/v1` | `google/gemma-2-9b-it`          |
-| Together       | `openai`       | `https://api.together.xyz/v1`      | `meta-llama/Llama-3-8b-chat-hf` |
-| Ollama (Gemma) | `ollama`       | `http://localhost:11434/v1`        | `gemma4:12b`                    |
+| Provider                        | `LLM_PROVIDER` | `MODEL_API_URL`                                            | `MODEL_NAME` example            |
+| -------------------------------- | -------------- | ------------------------------------------------------------ | -------------------------------- |
+| Groq                            | `openai`       | `https://api.groq.com/openai/v1`                           | `llama-3.1-8b-instant`          |
+| Hugging Face                    | `openai`       | `https://router.huggingface.co/v1`                         | `google/gemma-2-9b-it`          |
+| Together                        | `openai`       | `https://api.together.xyz/v1`                              | `meta-llama/Llama-3-8b-chat-hf` |
+| **Google Gemini API (Gemma 4)** | `openai`       | `https://generativelanguage.googleapis.com/v1beta/openai/` | `gemma-4-31b-it`                |
+| Ollama (local Gemma)             | `ollama`       | `http://localhost:11434/v1`                                | `gemma4:12b`                    |
 
-### Local Gemma via Ollama (the prebuilt pipeline)
+### Gemma 4 via Google's Gemini API (current default)
+
+```env
+LLM_PROVIDER=openai
+MODEL_API_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+MODEL_API_KEY=<your Google AI Studio API key>
+MODEL_NAME=gemma-4-31b-it   # or gemma-4-26b-a4b-it — call ListModels to see what's on your key
+DISABLE_THINKING=false      # this param is Ollama-only; Google's API rejects it
+MAX_TOKENS=1600             # generous: this model always "thinks" inline before answering
+```
+
+> **This Gemma 4 model can't be told not to think.** Unlike `gemma4:12b` on
+> Ollama (`think=false`), Google's Gemini API has no supported way to disable
+> reasoning for this model — `extra_body.google.thinking_config` and
+> `reasoning_effort` are both rejected with *"Thinking budget is not supported
+> for this model."* It emits its reasoning inline as `<thought>...</thought>`
+> ahead of the real answer, in both plain and streamed responses. `LLMClient`
+> strips those blocks after the fact (`_strip_thinking` / `_ThoughtStreamFilter`
+> in `app/llm/client.py`) so neither the chat UI nor the TTS voice ever sees
+> them — but the token budget must cover the hidden reasoning *and* the visible
+> reply, or stripping leaves nothing behind. `MAX_TOKENS=640` produced empty
+> replies in testing; `1600` was reliable.
+
+### Local Gemma via Ollama
 
 ```env
 LLM_PROVIDER=ollama
